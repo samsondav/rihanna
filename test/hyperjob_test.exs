@@ -1,8 +1,8 @@
-defmodule HyperjobTest do
+defmodule HyperTest do
   use ExUnit.Case
-  doctest Hyperjob
+  doctest Hyper
 
   test "greets the world" do
-    assert Hyperjob.hello() == :world
+    assert Hyper.hello() == :world
   end
 end
