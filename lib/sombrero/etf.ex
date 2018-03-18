@@ -17,5 +17,6 @@ defmodule Sombrero.ETF do
   def cast(mfa = {mod, fun, args}) when is_atom(mod) and is_atom(fun) and is_list(args) do
     {:ok, mfa}
   end
+
   def cast(_), do: :error
 end

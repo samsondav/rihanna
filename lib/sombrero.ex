@@ -7,6 +7,7 @@ defmodule Sombrero do
       mfa: mfa,
       state: "ready_to_run"
     }
+
     Sombrero.Repo.insert(job)
   end
 end

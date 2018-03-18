@@ -16,6 +16,7 @@ defmodule Sombrero.Manager do
     # each one
 
     ready_to_run_jobs = Sombrero.Repo.all(Sombrero.Job, where: [state: "ready_to_run"])
+
     Enum.each(ready_to_run_jobs, fn job ->
       IO.inspect("locking job in pid #{inspect(self)}")
       # Lock all jobs with SQL query
@@ -31,10 +32,8 @@ defmodule Sombrero.Manager do
         where: j.state == "in_progress",
         where: j.expires_at < fragment("NOW()")
       ),
-      [
-        set: [
-          state: "failed"
-        ]
+      set: [
+        state: "failed"
       ]
     )
 
@@ -43,30 +42,33 @@ defmodule Sombrero.Manager do
   end
 
   def lock_for_running(job) do
-    now = DateTime.utc_now
-    result = Sombrero.Repo.update_all(
-      from(
-        j in Sombrero.Job,
-        where: j.id == ^job.id,
-        where: j.state == "ready_to_run"
-      ),
-      [
-        set: [
-          state: "in_progress",
-          expires_at: Sombrero.Job.expires_at(now),
-          updated_at: now
-        ]
-      ],
-      returning: true
-    )
+    now = DateTime.utc_now()
+
+    result =
+      Sombrero.Repo.update_all(
+        from(
+          j in Sombrero.Job,
+          where: j.id == ^job.id,
+          where: j.state == "ready_to_run"
+        ),
+        [
+          set: [
+            state: "in_progress",
+            expires_at: Sombrero.Job.expires_at(now),
+            updated_at: now
+          ]
+        ],
+        returning: true
+      )
 
     case result do
-      {0, _} -> {:error, :job_not_found}
+      {0, _} ->
+        {:error, :job_not_found}
+
       {1, [job]} ->
         {:ok, job}
     end
   end
-
 
   defp schedule_poll() do
     Process.send_after(self(), :poll, poll_period())
@@ -80,6 +82,6 @@ defmodule Sombrero.Manager do
   # To prevent multiple workers started simultaneously from hitting the database
   # at similar times, we add a small random variance to the poll interval
   defp antialias() do
-    round((:rand.uniform - 0.5) * :timer.seconds(5))
+    round((:rand.uniform() - 0.5) * :timer.seconds(5))
   end
 end

@@ -12,9 +12,10 @@ defmodule Sombrero.Worker do
   """
   def start(job = %{mfa: {mod, fun, args}}) do
     # Sombrero.WorkerHeartbeat.start_link()
-    IO.puts "spawning job task in pid #{inspect(self)}"
+    IO.puts("spawning job task in pid #{inspect(self)}")
+
     Task.start(fn ->
-      IO.puts "running job in pid #{inspect(self)}"
+      IO.puts("running job in pid #{inspect(self)}")
       apply(mod, fun, args)
       completed(job)
     end)

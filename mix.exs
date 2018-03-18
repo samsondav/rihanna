@@ -7,7 +7,8 @@ defmodule Sombrero.MixProject do
       version: "0.1.0",
       elixir: "~> 1.6",
       start_permanent: Mix.env() == :prod,
-      deps: deps()
+      deps: deps(),
+      package: package()
     ]
   end
 
@@ -23,6 +24,15 @@ defmodule Sombrero.MixProject do
     [
       {:ecto, "~> 2.2.9"},
       {:postgrex, "~> 0.13.3"}
+    ]
+  end
+
+  defp package() do
+    [
+      description: "Sombrero is a database-backed job queue.",
+      licenses: ["MIT"],
+      maintainers: ["sampdavies@gmail.com"],
+      links: %{}
     ]
   end
 end
