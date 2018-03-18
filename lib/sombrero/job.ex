@@ -32,12 +32,15 @@ defmodule Sombrero.Job do
           where: j.state == "failed",
           where: j.id == ^job_id
         ),
-        set: [
-          state: "ready_to_run",
-          expires_at: expires_at(now),
-          updated_at: now,
-          enqueued_at: now
-        ]
+        [
+          set: [
+            state: "ready_to_run",
+            expires_at: expires_at(now),
+            updated_at: now,
+            enqueued_at: now
+          ]
+        ],
+        returning: true
       )
 
     case result do

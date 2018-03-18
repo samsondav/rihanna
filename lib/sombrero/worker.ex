@@ -16,6 +16,7 @@ defmodule Sombrero.Worker do
 
     Task.start(fn ->
       IO.puts("running job in pid #{inspect(self)}")
+      # TODO: Can we trap failures and proactively mark the job as failed?
       apply(mod, fun, args)
       completed(job)
     end)

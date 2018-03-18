@@ -2,6 +2,8 @@ defmodule Sombrero.Manager do
   use GenServer
   import Ecto.Query
 
+  @baseline_poll_interval :timer.seconds(60)
+
   def start_link(_arg) do
     GenServer.start_link(__MODULE__, %{})
   end
@@ -12,10 +14,25 @@ defmodule Sombrero.Manager do
   end
 
   def handle_info(:poll, state) do
+    # TODO: Need to LISTEN to pg_notify to enqueue jobs immediately
+    # Then we can use the poll as a failsafe
+    fire_off_ready_to_run_jobs()
+    sweep_for_expired_jobs()
+
+    schedule_poll()
+    {:noreply, state}
+  end
+
+  defp fire_off_ready_to_run_jobs() do
     # Read all ready_to_run jobs from the queue and spin off tasks to execute
     # each one
 
-    ready_to_run_jobs = Sombrero.Repo.all(Sombrero.Job, where: [state: "ready_to_run"])
+    ready_to_run_jobs = Sombrero.Repo.all(
+      from(
+        Sombrero.Job,
+        where: [state: "ready_to_run"]
+      )
+    )
 
     Enum.each(ready_to_run_jobs, fn job ->
       IO.inspect("locking job in pid #{inspect(self)}")
@@ -24,8 +41,9 @@ defmodule Sombrero.Manager do
       # Fire and forget each job (Task.start)
       Sombrero.Worker.start(job)
     end)
+  end
 
-    # sweep for expired (failed) jobs
+  defp sweep_for_expired_jobs() do
     Sombrero.Repo.update_all(
       from(
         j in Sombrero.Job,
@@ -36,9 +54,6 @@ defmodule Sombrero.Manager do
         state: "failed"
       ]
     )
-
-    schedule_poll()
-    {:noreply, state}
   end
 
   def lock_for_running(job) do
@@ -75,8 +90,7 @@ defmodule Sombrero.Manager do
   end
 
   defp poll_period() do
-    # :timer.minutes(1) + antialias()
-    :timer.seconds(15)
+    @baseline_poll_interval + antialias()
   end
 
   # To prevent multiple workers started simultaneously from hitting the database
