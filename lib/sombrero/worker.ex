@@ -1,4 +1,4 @@
-defmodule Hyper.Worker do
+defmodule Sombrero.Worker do
   @module """
   Executes a single job.
   """
@@ -11,7 +11,7 @@ defmodule Hyper.Worker do
   the manager reschedule it.
   """
   def start(job = %{mfa: {mod, fun, args}}) do
-    # Hyper.WorkerHeartbeat.start_link()
+    # Sombrero.WorkerHeartbeat.start_link()
     IO.puts "spawning job task in pid #{inspect(self)}"
     Task.start(fn ->
       IO.puts "running job in pid #{inspect(self)}"
@@ -21,9 +21,9 @@ defmodule Hyper.Worker do
   end
 
   defp completed(job) do
-    NestDB.Repo.delete_all(
+    Sombrero.Repo.delete_all(
       Query.from(
-        j in Hyper.Job,
+        j in Sombrero.Job,
         where: j.id == ^job.id
       )
     )

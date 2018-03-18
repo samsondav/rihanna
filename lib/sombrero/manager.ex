@@ -1,4 +1,4 @@
-defmodule Hyper.Manager do
+defmodule Sombrero.Manager do
   use GenServer
   import Ecto.Query
 
@@ -15,19 +15,19 @@ defmodule Hyper.Manager do
     # Read all ready_to_run jobs from the queue and spin off tasks to execute
     # each one
 
-    ready_to_run_jobs = NestDB.Repo.all(Hyper.Job, where: [state: "ready_to_run"])
+    ready_to_run_jobs = Sombrero.Repo.all(Sombrero.Job, where: [state: "ready_to_run"])
     Enum.each(ready_to_run_jobs, fn job ->
       IO.inspect("locking job in pid #{inspect(self)}")
       # Lock all jobs with SQL query
       lock_for_running(job)
       # Fire and forget each job (Task.start)
-      Hyper.Worker.start(job)
+      Sombrero.Worker.start(job)
     end)
 
     # sweep for expired (failed) jobs
-    NestDB.Repo.update_all(
+    Sombrero.Repo.update_all(
       from(
-        j in Hyper.Job,
+        j in Sombrero.Job,
         where: j.state == "in_progress",
         where: j.expires_at < fragment("NOW()")
       ),
@@ -44,16 +44,16 @@ defmodule Hyper.Manager do
 
   def lock_for_running(job) do
     now = DateTime.utc_now
-    result = NestDB.Repo.update_all(
+    result = Sombrero.Repo.update_all(
       from(
-        j in Hyper.Job,
+        j in Sombrero.Job,
         where: j.id == ^job.id,
         where: j.state == "ready_to_run"
       ),
       [
         set: [
           state: "in_progress",
-          expires_at: Hyper.Job.expires_at(now),
+          expires_at: Sombrero.Job.expires_at(now),
           updated_at: now
         ]
       ],

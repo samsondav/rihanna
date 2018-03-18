@@ -1,8 +1,8 @@
-defmodule HyperTest do
+defmodule SombreroTest do
   use ExUnit.Case
-  doctest Hyper
+  doctest Sombrero
 
   test "greets the world" do
-    assert Hyper.hello() == :world
+    assert Sombrero.hello() == :world
   end
 end

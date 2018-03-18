@@ -1,4 +1,4 @@
-defmodule Hyper.ETF do
+defmodule Sombrero.ETF do
   @behaviour Ecto.Type
 
   def type, do: :bytea

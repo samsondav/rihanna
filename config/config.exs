@@ -10,16 +10,26 @@ use Mix.Config
 
 # You can configure your application as:
 #
-#     config :hyper, key: :value
+#     config :sombrero, key: :value
 #
 # and access this configuration in your application as:
 #
-#     Application.get_env(:hyper, :key)
+#     Application.get_env(:sombrero, :key)
 #
 # You can also configure a 3rd-party app:
 #
 #     config :logger, level: :info
 #
+
+config :sombrero, ecto_repos: [Sombrero.Repo]
+
+config :sombrero, Sombrero.Repo,
+  adapter: Ecto.Adapters.Postgres,
+  username: "nested",
+  password: "nested",
+  database: "sombrero_db",
+  hostname: "127.0.0.1",
+  port: 54321
 
 # It is also possible to import configuration files, relative to this
 # directory. For example, you can emulate configuration per environment

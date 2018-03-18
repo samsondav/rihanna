@@ -1,14 +1,10 @@
-defmodule Hyper.MixProject do
+defmodule Sombrero.MixProject do
   use Mix.Project
 
   def project do
     [
-      app: :hyper,
+      app: :sombrero,
       version: "0.1.0",
-      build_path: "../../_build",
-      config_path: "../../config/config.exs",
-      deps_path: "../../deps",
-      lockfile: "../../mix.lock",
       elixir: "~> 1.6",
       start_permanent: Mix.env() == :prod,
       deps: deps()
@@ -25,7 +21,8 @@ defmodule Hyper.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:nest_db, in_umbrella: true}
+      {:ecto, "~> 2.2.9"},
+      {:postgrex, "~> 0.13.3"}
     ]
   end
 end
