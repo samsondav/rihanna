@@ -23,7 +23,8 @@ defmodule Sombrero.MixProject do
   defp deps do
     [
       {:ecto, "~> 2.2.9"},
-      {:postgrex, "~> 0.13.3"}
+      {:postgrex, "~> 0.13.3"},
+      {:ex_doc, ">= 0.0.0", only: :dev}
     ]
   end
 
