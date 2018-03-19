@@ -3,6 +3,7 @@ defmodule Sombrero.Worker do
   Executes a single job.
   """
 
+  require Logger
   require Ecto.Query, as: Query
 
   @doc """
@@ -11,14 +12,19 @@ defmodule Sombrero.Worker do
   the manager reschedule it.
   """
   def start(job = %{mfa: {mod, fun, args}}) do
-    # Sombrero.WorkerHeartbeat.start_link()
-    IO.puts("spawning job task in pid #{inspect(self)}")
+    Logger.debug("Spawning worker task in pid #{inspect(self)}")
 
     Task.start(fn ->
-      IO.puts("running job in pid #{inspect(self)}")
-      # TODO: Can we trap failures and proactively mark the job as failed?
+      # FIXME: heartbeat runs forever?
+      {:ok, heartbeat} = Sombrero.WorkerHeartbeat.start_link(job)
+      Logger.debug("Hearbeat is running in #{inspect(heartbeat)}")
+      Logger.debug("Running job in pid #{inspect(self)}")
+
+      # TODO: Can we trap failures and proactively mark the job as failed so we don't have to wait for the poll?
       apply(mod, fun, args)
+      Logger.debug("Finished job")
       completed(job)
+      Logger.debug("Worker task done")
     end)
   end
 

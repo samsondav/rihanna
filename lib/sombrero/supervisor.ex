@@ -7,6 +7,7 @@ defmodule Sombrero.Supervisor do
 
   def init(:ok) do
     children = [
+      worker(Postgrex.Notifications, [Sombrero.Repo.config() ++ [name: Sombrero.PGNotifier]]),
       Sombrero.Repo,
       Sombrero.Manager
     ]

@@ -1,21 +1,23 @@
 defmodule Sombrero.Manager do
   use GenServer
+  require Logger
   import Ecto.Query
 
   @baseline_poll_interval :timer.seconds(60)
 
-  def start_link(_arg) do
-    GenServer.start_link(__MODULE__, %{})
+  def start_link(opts) do
+    state = Enum.into(opts, %{})
+    GenServer.start_link(__MODULE__, state)
   end
 
   def init(state) do
+    {:ok, _ref} = Postgrex.Notifications.listen(Sombrero.PGNotifier, "insert_job")
+
     Process.send(self(), :poll, [])
     {:ok, state}
   end
 
   def handle_info(:poll, state) do
-    # TODO: Need to LISTEN to pg_notify to enqueue jobs immediately
-    # Then we can use the poll as a failsafe
     fire_off_ready_to_run_jobs()
     sweep_for_expired_jobs()
 
@@ -23,23 +25,46 @@ defmodule Sombrero.Manager do
     {:noreply, state}
   end
 
+  def handle_info(msg = {:notification, pid, ref, "insert_job", payload}, state) do
+    Logger.debug("Got notification: #{inspect(msg)}")
+    payload = Jason.decode!(payload)
+    id = payload["id"]
+
+    case lock_for_running(id) do
+      {:ok, job} ->
+        Sombrero.Worker.start(job)
+
+      {:error, :no_lock} ->
+        # this is fine, another process already claimed it
+        :noop
+    end
+
+    {:noreply, state}
+  end
+
   defp fire_off_ready_to_run_jobs() do
     # Read all ready_to_run jobs from the queue and spin off tasks to execute
     # each one
 
-    ready_to_run_jobs = Sombrero.Repo.all(
-      from(
-        Sombrero.Job,
-        where: [state: "ready_to_run"]
+    ready_to_run_jobs =
+      Sombrero.Repo.all(
+        from(
+          Sombrero.Job,
+          where: [state: "ready_to_run"],
+          select: [:id]
+        )
       )
-    )
 
-    Enum.each(ready_to_run_jobs, fn job ->
-      IO.inspect("locking job in pid #{inspect(self)}")
+    Enum.each(ready_to_run_jobs, fn %{id: id} ->
       # Lock all jobs with SQL query
-      lock_for_running(job)
-      # Fire and forget each job (Task.start)
-      Sombrero.Worker.start(job)
+      case lock_for_running(id) do
+        {:ok, job} ->
+          Sombrero.Worker.start(job)
+
+        {:error, :no_lock} ->
+          # Most likely it was already locked by another worker
+          :noop
+      end
     end)
   end
 
@@ -56,14 +81,14 @@ defmodule Sombrero.Manager do
     )
   end
 
-  def lock_for_running(job) do
+  def lock_for_running(job_id) do
     now = DateTime.utc_now()
 
     result =
       Sombrero.Repo.update_all(
         from(
           j in Sombrero.Job,
-          where: j.id == ^job.id,
+          where: j.id == ^job_id,
           where: j.state == "ready_to_run"
         ),
         [
@@ -77,19 +102,21 @@ defmodule Sombrero.Manager do
       )
 
     case result do
-      {0, _} ->
-        {:error, :job_not_found}
-
       {1, [job]} ->
+        Logger.debug("Got lock for job #{job.id} in pid #{inspect(self)}")
         {:ok, job}
+
+      {0, _} ->
+        Logger.debug("Missed lock for job #{job_id} in pid #{inspect(self)}")
+        {:error, :no_lock}
     end
   end
 
   defp schedule_poll() do
-    Process.send_after(self(), :poll, poll_period())
+    Process.send_after(self(), :poll, poll_interval())
   end
 
-  defp poll_period() do
+  defp poll_interval() do
     @baseline_poll_interval + antialias()
   end
 

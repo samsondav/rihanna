@@ -9,11 +9,14 @@ defmodule Sombrero.Job do
   )
 
   @grace_time_seconds 30
+  def grace_time_seconds, do: @grace_time_seconds
 
   schema "jobs" do
     field(:mfa, Sombrero.ETF)
     field(:state, :string)
     field(:expires_at, :utc_datetime)
+    field(:failed_at, :utc_datetime)
+    field(:fail_reason, :string)
 
     timestamps(inserted_at: :enqueued_at)
   end
