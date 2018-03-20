@@ -8,7 +8,7 @@ defmodule Sombrero.Job do
     failed
   )
 
-  @grace_time_seconds 30
+  @grace_time_seconds 5
   def grace_time_seconds, do: @grace_time_seconds
 
   schema "jobs" do
@@ -19,10 +19,6 @@ defmodule Sombrero.Job do
     field(:fail_reason, :string)
 
     timestamps(inserted_at: :enqueued_at)
-  end
-
-  def validate(_changeset) do
-    # TODO: write me
   end
 
   def retry_failed(job_id) when is_binary(job_id) or is_integer(job_id) do

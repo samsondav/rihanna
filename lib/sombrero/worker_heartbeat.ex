@@ -15,7 +15,7 @@ defmodule Sombrero.WorkerHeartbeat do
   end
 
   def handle_info(:heartbeat, state = %{job: job}) do
-    # extend_expiry(job)
+    extend_expiry(job)
     Logger.debug("HEARTBEAT from #{inspect(self)}")
     {:noreply, state}
   end
@@ -38,9 +38,5 @@ defmodule Sombrero.WorkerHeartbeat do
 
   defp start_timer() do
     {:ok, _ref} = :timer.send_interval(@hearbeat_interval, :heartbeat)
-  end
-
-  defp poll_interval() do
-    @hea
   end
 end

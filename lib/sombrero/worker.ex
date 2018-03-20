@@ -15,25 +15,58 @@ defmodule Sombrero.Worker do
     Logger.debug("Spawning worker task in pid #{inspect(self)}")
 
     Task.start(fn ->
-      # FIXME: heartbeat runs forever?
-      {:ok, heartbeat} = Sombrero.WorkerHeartbeat.start_link(job)
-      Logger.debug("Hearbeat is running in #{inspect(heartbeat)}")
-      Logger.debug("Running job in pid #{inspect(self)}")
+      Process.flag(:trap_exit, true)
 
-      # TODO: Can we trap failures and proactively mark the job as failed so we don't have to wait for the poll?
-      apply(mod, fun, args)
-      Logger.debug("Finished job")
-      completed(job)
+      job_pid = spawn_link(mod, fun, args)
+      Logger.debug("Running job in pid #{inspect(self)}")
+      {:ok, heartbeat} = start_heartbeat(job)
+      Logger.debug("Hearbeat is running in #{inspect(heartbeat)}")
+      receive do
+        {:EXIT, ^job_pid, :normal} ->
+          Logger.debug("Process #{inspect job_pid} exited normally")
+          Logger.debug("Finished job")
+          success(job.id)
+        {:EXIT, ^job_pid, reason} ->
+          Logger.debug("Process #{inspect job_pid} exited abnormally with reason #{inspect(reason)}")
+          failure(job.id, reason)
+      end
+      Logger.debug("Stopping heartbeat in #{inspect heartbeat}")
+      Process.exit(heartbeat, :kill)
       Logger.debug("Worker task done")
     end)
   end
 
-  defp completed(job) do
+  defp start_heartbeat(job) do
+    Supervisor.start_link([
+      {Sombrero.WorkerHeartbeat, job}
+    ], strategy: :one_for_one)
+  end
+
+  defp success(job_id) do
     Sombrero.Repo.delete_all(
       Query.from(
         j in Sombrero.Job,
-        where: j.id == ^job.id
+        where: j.id == ^job_id
       )
+    )
+  end
+
+  defp failure(job_id, reason) do
+    now = DateTime.utc_now()
+    {1, nil} = Sombrero.Repo.update_all(
+      Query.from(
+        j in Sombrero.Job,
+        where: j.id == ^job_id
+      ),
+      [
+        set: [
+          state: "failed",
+          failed_at: now,
+          fail_reason: Exception.format_exit(reason),
+          expires_at: nil,
+          updated_at: now
+        ]
+      ]
     )
   end
 end

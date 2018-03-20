@@ -34,7 +34,7 @@ defmodule Sombrero.Manager do
       {:ok, job} ->
         Sombrero.Worker.start(job)
 
-      {:error, :no_lock} ->
+      {:error, :missed_lock} ->
         # this is fine, another process already claimed it
         :noop
     end
@@ -55,14 +55,14 @@ defmodule Sombrero.Manager do
         )
       )
 
+    # FIXME: This is not particularly efficient since it issues N updates where
+    # N is the number of jobs
     Enum.each(ready_to_run_jobs, fn %{id: id} ->
-      # Lock all jobs with SQL query
       case lock_for_running(id) do
         {:ok, job} ->
           Sombrero.Worker.start(job)
 
-        {:error, :no_lock} ->
-          # Most likely it was already locked by another worker
+        {:error, :missed_lock} ->
           :noop
       end
     end)
@@ -76,7 +76,8 @@ defmodule Sombrero.Manager do
         where: j.expires_at < fragment("NOW()")
       ),
       set: [
-        state: "failed"
+        state: "failed",
+        expires_at: nil
       ]
     )
   end
@@ -108,7 +109,7 @@ defmodule Sombrero.Manager do
 
       {0, _} ->
         Logger.debug("Missed lock for job #{job_id} in pid #{inspect(self)}")
-        {:error, :no_lock}
+        {:error, :missed_lock}
     end
   end
 
