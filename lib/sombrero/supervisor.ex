@@ -1,6 +1,10 @@
 defmodule Sombrero.Supervisor do
   use Supervisor
 
+  @moduledoc """
+  TODO: Write some documentation
+  """
+
   def start_link(opts) do
     Supervisor.start_link(__MODULE__, :ok, opts)
   end

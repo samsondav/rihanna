@@ -31,6 +31,8 @@ config :sombrero, Sombrero.Repo,
   hostname: "127.0.0.1",
   port: 54321
 
+config :sombrero, jobs_table_name: "sombrero_jobs"
+
 # It is also possible to import configuration files, relative to this
 # directory. For example, you can emulate configuration per environment
 # by uncommenting the line below and defining dev.exs, test.exs and such.

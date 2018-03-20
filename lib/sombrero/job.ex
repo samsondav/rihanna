@@ -8,10 +8,11 @@ defmodule Sombrero.Job do
     failed
   )
 
-  @grace_time_seconds 5
+  # Time since last heartbeat that job will be assumed to have failed
+  @grace_time_seconds 30
   def grace_time_seconds, do: @grace_time_seconds
 
-  schema "jobs" do
+  schema Sombrero.Config.jobs_table_name() do
     field(:mfa, Sombrero.ETF)
     field(:state, :string)
     field(:expires_at, :utc_datetime)

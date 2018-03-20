@@ -25,7 +25,8 @@ defmodule Sombrero.Manager do
     {:noreply, state}
   end
 
-  def handle_info(msg = {:notification, pid, ref, "insert_job", payload}, state) do
+  # TODO: Should probably match on this pid and ref
+  def handle_info(msg = {:notification, _pid, _ref, "insert_job", payload}, state) do
     Logger.debug("Got notification: #{inspect(msg)}")
     payload = Jason.decode!(payload)
     id = payload["id"]
@@ -56,7 +57,7 @@ defmodule Sombrero.Manager do
       )
 
     # FIXME: This is not particularly efficient since it issues N updates where
-    # N is the number of jobs
+    # N is the number of ready to run jobs
     Enum.each(ready_to_run_jobs, fn %{id: id} ->
       case lock_for_running(id) do
         {:ok, job} ->
@@ -69,15 +70,19 @@ defmodule Sombrero.Manager do
   end
 
   defp sweep_for_expired_jobs() do
+    now = DateTime.utc_now()
+
     Sombrero.Repo.update_all(
       from(
         j in Sombrero.Job,
         where: j.state == "in_progress",
-        where: j.expires_at < fragment("NOW()")
+        where: j.expires_at < now
       ),
       set: [
         state: "failed",
-        expires_at: nil
+        expires_at: nil,
+        failed_at: now,
+        fail_reason: "Unknown: worker went AWOL"
       ]
     )
   end
@@ -104,11 +109,11 @@ defmodule Sombrero.Manager do
 
     case result do
       {1, [job]} ->
-        Logger.debug("Got lock for job #{job.id} in pid #{inspect(self)}")
+        Logger.debug("Got lock for job #{job.id} in pid #{inspect(self())}")
         {:ok, job}
 
       {0, _} ->
-        Logger.debug("Missed lock for job #{job_id} in pid #{inspect(self)}")
+        Logger.debug("Missed lock for job #{job_id} in pid #{inspect(self())}")
         {:error, :missed_lock}
     end
   end

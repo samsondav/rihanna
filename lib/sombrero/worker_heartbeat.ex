@@ -3,7 +3,8 @@ defmodule Sombrero.WorkerHeartbeat do
   use GenServer
   require Ecto.Query, as: Query
 
-  @hearbeat_interval :timer.seconds(Sombrero.Job.grace_time_seconds())
+  # Issue heartbeat once half of the grace time has expired
+  @hearbeat_interval :timer.seconds(Sombrero.Job.grace_time_seconds() / 2)
 
   def start_link(job) do
     GenServer.start_link(__MODULE__, %{job: job})
@@ -15,8 +16,8 @@ defmodule Sombrero.WorkerHeartbeat do
   end
 
   def handle_info(:heartbeat, state = %{job: job}) do
+    Logger.debug("HEARTBEAT from #{inspect(self())}")
     extend_expiry(job)
-    Logger.debug("HEARTBEAT from #{inspect(self)}")
     {:noreply, state}
   end
 
@@ -32,8 +33,6 @@ defmodule Sombrero.WorkerHeartbeat do
           updated_at: now
         ]
       )
-
-    :ok
   end
 
   defp start_timer() do
