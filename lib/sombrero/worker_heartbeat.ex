@@ -4,7 +4,7 @@ defmodule Sombrero.WorkerHeartbeat do
   require Ecto.Query, as: Query
 
   # Issue heartbeat once half of the grace time has expired
-  @hearbeat_interval :timer.seconds(Sombrero.Job.grace_time_seconds() / 2)
+  @hearbeat_interval round(:timer.seconds(Sombrero.Job.grace_time_seconds()) / 2)
 
   def start_link(job) do
     GenServer.start_link(__MODULE__, %{job: job})

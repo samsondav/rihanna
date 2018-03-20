@@ -76,7 +76,7 @@ defmodule Sombrero.Manager do
       from(
         j in Sombrero.Job,
         where: j.state == "in_progress",
-        where: j.expires_at < now
+        where: j.expires_at < ^now
       ),
       set: [
         state: "failed",

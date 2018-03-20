@@ -2,11 +2,13 @@ defmodule Sombrero.Job do
   use Ecto.Schema
   require Ecto.Query, as: Query
 
-  @states ~w(
+  @moduledoc """
+  Valid states are:
     ready_to_run
     in_progress
     failed
-  )
+
+  """
 
   # Time since last heartbeat that job will be assumed to have failed
   @grace_time_seconds 30
@@ -19,7 +21,7 @@ defmodule Sombrero.Job do
     field(:failed_at, :utc_datetime)
     field(:fail_reason, :string)
 
-    timestamps(inserted_at: :enqueued_at)
+    timestamps(inserted_at: :enqueued_at, type: :utc_datetime)
   end
 
   def retry_failed(job_id) when is_binary(job_id) or is_integer(job_id) do
