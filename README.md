@@ -1,6 +1,6 @@
 # Rihanna
 
-Rihanna is a database-backed job distributed job queue for Elixir.
+Rihanna is a postgres-backed job distributed job queue for Elixir.
 
 
 ## Installation
