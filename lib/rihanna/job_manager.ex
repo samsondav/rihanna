@@ -3,8 +3,8 @@ defmodule Rihanna.JobManager do
   require Logger
   require Ecto.Query, as: Query
 
-  # Issue heartbeat every half of grace time
-  @hearbeat_interval round(:timer.seconds(Rihanna.Job.grace_time_seconds()) / 2)
+  # Wait a maximum of half of grace time to issue a new heartbeat
+  @hearbeat_interval round(:timer.seconds(Rihanna.Producer.grace_time_seconds()) / 2)
 
   def start_link(opts) do
     GenServer.start_link(__MODULE__, %{}, opts)
@@ -54,7 +54,6 @@ defmodule Rihanna.JobManager do
 
   defp extend_expiry(job_ids) do
     now = DateTime.utc_now()
-    new_expiry = Rihanna.Job.expires_at(now)
 
     if Enum.any?(job_ids) do
       {_n, nil} =
@@ -64,12 +63,19 @@ defmodule Rihanna.JobManager do
             where: j.id in ^job_ids
           ),
           set: [
-            expires_at: new_expiry,
+            heartbeat_at: now,
             updated_at: now
           ]
         )
     end
   end
+
+  # def heartbeat_at(now) do
+  #   now
+  #   |> DateTime.to_unix()
+  #   |> Kernel.+(@grace_time_seconds)
+  #   |> DateTime.from_unix!()
+  # end
 
   defp success(job_id) do
     Rihanna.Repo.delete_all(
@@ -93,7 +99,7 @@ defmodule Rihanna.JobManager do
           state: "failed",
           failed_at: now,
           fail_reason: Exception.format_exit(reason),
-          expires_at: nil,
+          heartbeat_at: nil,
           updated_at: now
         ]
       )

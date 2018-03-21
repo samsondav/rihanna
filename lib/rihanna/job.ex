@@ -10,14 +10,10 @@ defmodule Rihanna.Job do
 
   """
 
-  # Time since last heartbeat that job will be assumed to have failed
-  @grace_time_seconds 30
-  def grace_time_seconds, do: @grace_time_seconds
-
   schema Rihanna.Config.jobs_table_name() do
     field(:mfa, Rihanna.ETF)
     field(:state, :string)
-    field(:expires_at, :utc_datetime) # TODO: Use last_known_alive_at instead
+    field(:heartbeat_at, :utc_datetime)
     field(:failed_at, :utc_datetime)
     field(:fail_reason, :string)
 
@@ -41,7 +37,7 @@ defmodule Rihanna.Job do
         [
           set: [
             state: "ready_to_run",
-            expires_at: expires_at(now),
+            heartbeat_at: now,
             updated_at: now,
             enqueued_at: now
           ]
@@ -56,12 +52,5 @@ defmodule Rihanna.Job do
       {1, [_job]} ->
         {:ok, :retried}
     end
-  end
-
-  def expires_at(now) do
-    now
-    |> DateTime.to_unix()
-    |> Kernel.+(@grace_time_seconds)
-    |> DateTime.from_unix!()
   end
 end

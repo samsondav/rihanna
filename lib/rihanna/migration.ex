@@ -6,7 +6,7 @@ defmodule Rihanna.Migration do
         add :enqueued_at, :utc_datetime, null: false
         add :updated_at, :utc_datetime, null: false
         add :state, :string, null: false, default: "ready_to_run"
-        add :expires_at, :utc_datetime
+        add :heartbeat_at, :utc_datetime
         add :failed_at, :utc_datetime
         add :fail_reason, :text
       end
@@ -27,9 +27,9 @@ defmodule Rihanna.Migration do
 
       create constraint(
         unquote(table_name),
-        "only_in_progress_must_set_expires_at",
-        check: ~s|expires_at IS NULL OR (state = 'in_progress' AND expires_at IS NOT NULL)|,
-        comment: ~s(If job state is 'in_progress', expires_at must be set. Otherwise it must be NULL.)
+        "only_in_progress_must_set_heartbeat_at",
+        check: ~s|heartbeat_at IS NULL OR (state = 'in_progress' AND heartbeat_at IS NOT NULL)|,
+        comment: ~s(If job state is 'in_progress', heartbeat_at must be set. Otherwise it must be NULL.)
       )
 
 
@@ -57,7 +57,7 @@ defmodule Rihanna.Migration do
         ON #{unquote(table_name)}
         FOR EACH ROW
         EXECUTE PROCEDURE fn_notify_insert_job();
-      """, "DROP TRIGGER IF EXISTS trg_notify_insert_job ON jobs"
+      """, "DROP TRIGGER trg_notify_insert_job ON #{unquote(table_name)} CASCADE"
     end
   end
 end

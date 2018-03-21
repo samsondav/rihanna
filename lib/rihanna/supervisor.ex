@@ -6,13 +6,14 @@ defmodule Rihanna.Supervisor do
   """
 
   def start_link(opts) do
-    Supervisor.start_link(__MODULE__, :ok, opts)
+    {config, opts} = Keyword.pop(opts, :config)
+    Supervisor.start_link(__MODULE__, config, opts)
   end
 
-  def init(:ok) do
+  def init(config) do
     children = [
-      worker(Postgrex.Notifications, [Rihanna.Repo.config() ++ [name: Rihanna.PGNotifier]]),
-      Rihanna.Repo,
+      {Rihanna.Repo, config},
+      worker(Postgrex.Notifications, [config ++ [name: Rihanna.PGNotifier]]),
       {Task.Supervisor, name: Rihanna.JobSupervisor},
       {Rihanna.JobManager, [name: Rihanna.JobManager]},
       Rihanna.Producer
@@ -21,3 +22,4 @@ defmodule Rihanna.Supervisor do
     Supervisor.init(children, strategy: :one_for_one)
   end
 end
+

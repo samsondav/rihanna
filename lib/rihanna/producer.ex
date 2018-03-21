@@ -5,6 +5,10 @@ defmodule Rihanna.Producer do
 
   @baseline_poll_interval :timer.seconds(60)
 
+  # Time since last heartbeat that job will be assumed to have failed
+  @grace_time_seconds 30
+  def grace_time_seconds, do: @grace_time_seconds
+
   def start_link(opts) do
     state = Enum.into(opts, %{})
     GenServer.start_link(__MODULE__, state)
@@ -36,7 +40,6 @@ defmodule Rihanna.Producer do
         Rihanna.Job.start(job)
 
       {:error, :missed_lock} ->
-        # this is fine, another process already claimed it
         :noop
     end
 
@@ -69,18 +72,23 @@ defmodule Rihanna.Producer do
     end)
   end
 
+  #
   defp sweep_for_expired_jobs() do
     now = DateTime.utc_now()
+    assume_dead = now
+    |> DateTime.to_unix()
+    |> Kernel.-(@grace_time_seconds)
+    |> DateTime.from_unix!()
 
     Rihanna.Repo.update_all(
       from(
         j in Rihanna.Job,
         where: j.state == "in_progress",
-        where: j.expires_at < ^now
+        where: j.heartbeat_at <= ^assume_dead
       ),
       set: [
         state: "failed",
-        expires_at: nil,
+        heartbeat_at: nil,
         failed_at: now,
         fail_reason: "Unknown: worker went AWOL"
       ]
@@ -100,7 +108,7 @@ defmodule Rihanna.Producer do
         [
           set: [
             state: "in_progress",
-            expires_at: Rihanna.Job.expires_at(now),
+            heartbeat_at: now,
             updated_at: now
           ]
         ],
