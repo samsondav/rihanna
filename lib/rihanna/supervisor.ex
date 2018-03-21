@@ -13,9 +13,11 @@ defmodule Rihanna.Supervisor do
     children = [
       worker(Postgrex.Notifications, [Rihanna.Repo.config() ++ [name: Rihanna.PGNotifier]]),
       Rihanna.Repo,
-      Rihanna.Manager
+      {Task.Supervisor, name: Rihanna.JobSupervisor},
+      {Rihanna.JobManager, [name: Rihanna.JobManager]},
+      Rihanna.Producer
     ]
 
-    Supervisor.init(children, strategy: :one_for_all)
+    Supervisor.init(children, strategy: :one_for_one)
   end
 end

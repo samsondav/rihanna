@@ -1,4 +1,4 @@
-defmodule Rihanna.Manager do
+defmodule Rihanna.Producer do
   use GenServer
   require Logger
   import Ecto.Query
@@ -33,7 +33,7 @@ defmodule Rihanna.Manager do
 
     case lock_for_running(id) do
       {:ok, job} ->
-        Rihanna.Worker.start(job)
+        Rihanna.Job.start(job)
 
       {:error, :missed_lock} ->
         # this is fine, another process already claimed it
@@ -61,7 +61,7 @@ defmodule Rihanna.Manager do
     Enum.each(ready_to_run_jobs, fn %{id: id} ->
       case lock_for_running(id) do
         {:ok, job} ->
-          Rihanna.Worker.start(job)
+          Rihanna.Job.start(job)
 
         {:error, :missed_lock} ->
           :noop
