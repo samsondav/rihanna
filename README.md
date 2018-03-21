@@ -10,7 +10,7 @@ Add `rihanna` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:rihanna, "~> 0.1.0"}
+    {:rihanna, ">= 0.0.0"}
   ]
 end
 ```
