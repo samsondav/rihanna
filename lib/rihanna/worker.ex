@@ -1,4 +1,4 @@
-defmodule Sombrero.Worker do
+defmodule Rihanna.Worker do
   @moduledoc """
   TODO: Write this documentation
   """
@@ -45,16 +45,16 @@ defmodule Sombrero.Worker do
   defp start_heartbeat(job) do
     Supervisor.start_link(
       [
-        {Sombrero.WorkerHeartbeat, job}
+        {Rihanna.WorkerHeartbeat, job}
       ],
       strategy: :one_for_one
     )
   end
 
   defp success(job_id) do
-    Sombrero.Repo.delete_all(
+    Rihanna.Repo.delete_all(
       Query.from(
-        j in Sombrero.Job,
+        j in Rihanna.Job,
         where: j.id == ^job_id
       )
     )
@@ -64,9 +64,9 @@ defmodule Sombrero.Worker do
     now = DateTime.utc_now()
 
     {1, nil} =
-      Sombrero.Repo.update_all(
+      Rihanna.Repo.update_all(
         Query.from(
-          j in Sombrero.Job,
+          j in Rihanna.Job,
           where: j.id == ^job_id
         ),
         set: [

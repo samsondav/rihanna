@@ -1,4 +1,4 @@
-defmodule Sombrero.Job do
+defmodule Rihanna.Job do
   use Ecto.Schema
   require Ecto.Query, as: Query
 
@@ -14,8 +14,8 @@ defmodule Sombrero.Job do
   @grace_time_seconds 30
   def grace_time_seconds, do: @grace_time_seconds
 
-  schema Sombrero.Config.jobs_table_name() do
-    field(:mfa, Sombrero.ETF)
+  schema Rihanna.Config.jobs_table_name() do
+    field(:mfa, Rihanna.ETF)
     field(:state, :string)
     field(:expires_at, :utc_datetime)
     field(:failed_at, :utc_datetime)
@@ -28,9 +28,9 @@ defmodule Sombrero.Job do
     now = DateTime.utc_now()
 
     result =
-      Sombrero.Repo.update_all(
+      Rihanna.Repo.update_all(
         Query.from(
-          j in Sombrero.Job,
+          j in Rihanna.Job,
           where: j.state == "failed",
           where: j.id == ^job_id
         ),

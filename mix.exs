@@ -1,9 +1,9 @@
-defmodule Sombrero.MixProject do
+defmodule Rihanna.MixProject do
   use Mix.Project
 
   def project do
     [
-      app: :sombrero,
+      app: :rihanna,
       version: "0.1.0",
       elixir: "~> 1.6",
       start_permanent: Mix.env() == :prod,
@@ -29,7 +29,7 @@ defmodule Sombrero.MixProject do
 
   defp package() do
     [
-      description: "Sombrero is a database-backed job queue.",
+      description: "Rihanna is a database-backed job queue.",
       licenses: ["MIT"],
       maintainers: ["sampdavies@gmail.com"],
       links: %{}

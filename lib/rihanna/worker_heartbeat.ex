@@ -1,10 +1,10 @@
-defmodule Sombrero.WorkerHeartbeat do
+defmodule Rihanna.WorkerHeartbeat do
   require Logger
   use GenServer
   require Ecto.Query, as: Query
 
   # Issue heartbeat once half of the grace time has expired
-  @hearbeat_interval round(:timer.seconds(Sombrero.Job.grace_time_seconds()) / 2)
+  @hearbeat_interval round(:timer.seconds(Rihanna.Job.grace_time_seconds()) / 2)
 
   def start_link(job) do
     GenServer.start_link(__MODULE__, %{job: job})
@@ -23,11 +23,11 @@ defmodule Sombrero.WorkerHeartbeat do
 
   defp extend_expiry(%{id: id}) do
     now = DateTime.utc_now()
-    new_expiry = Sombrero.Job.expires_at(now)
+    new_expiry = Rihanna.Job.expires_at(now)
 
     {1, nil} =
-      Sombrero.Repo.update_all(
-        Query.from(Sombrero.Job, where: [id: ^id]),
+      Rihanna.Repo.update_all(
+        Query.from(Rihanna.Job, where: [id: ^id]),
         set: [
           expires_at: new_expiry,
           updated_at: now

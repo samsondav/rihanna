@@ -1,7 +1,7 @@
-defmodule Sombrero.Repo.Migrations.CreateJobs do
+defmodule Rihanna.Repo.Migrations.CreateJobs do
   use Ecto.Migration
 
-  @table_name Sombrero.Config.jobs_table_name()
+  @table_name Rihanna.Config.jobs_table_name()
 
   def change do
     create table(@table_name) do

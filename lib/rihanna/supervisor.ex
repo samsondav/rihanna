@@ -1,4 +1,4 @@
-defmodule Sombrero.Supervisor do
+defmodule Rihanna.Supervisor do
   use Supervisor
 
   @moduledoc """
@@ -11,9 +11,9 @@ defmodule Sombrero.Supervisor do
 
   def init(:ok) do
     children = [
-      worker(Postgrex.Notifications, [Sombrero.Repo.config() ++ [name: Sombrero.PGNotifier]]),
-      Sombrero.Repo,
-      Sombrero.Manager
+      worker(Postgrex.Notifications, [Rihanna.Repo.config() ++ [name: Rihanna.PGNotifier]]),
+      Rihanna.Repo,
+      Rihanna.Manager
     ]
 
     Supervisor.init(children, strategy: :one_for_all)

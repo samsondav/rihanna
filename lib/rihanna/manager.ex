@@ -1,4 +1,4 @@
-defmodule Sombrero.Manager do
+defmodule Rihanna.Manager do
   use GenServer
   require Logger
   import Ecto.Query
@@ -11,7 +11,7 @@ defmodule Sombrero.Manager do
   end
 
   def init(state) do
-    {:ok, _ref} = Postgrex.Notifications.listen(Sombrero.PGNotifier, "insert_job")
+    {:ok, _ref} = Postgrex.Notifications.listen(Rihanna.PGNotifier, "insert_job")
 
     Process.send(self(), :poll, [])
     {:ok, state}
@@ -33,7 +33,7 @@ defmodule Sombrero.Manager do
 
     case lock_for_running(id) do
       {:ok, job} ->
-        Sombrero.Worker.start(job)
+        Rihanna.Worker.start(job)
 
       {:error, :missed_lock} ->
         # this is fine, another process already claimed it
@@ -48,9 +48,9 @@ defmodule Sombrero.Manager do
     # each one
 
     ready_to_run_jobs =
-      Sombrero.Repo.all(
+      Rihanna.Repo.all(
         from(
-          Sombrero.Job,
+          Rihanna.Job,
           where: [state: "ready_to_run"],
           select: [:id]
         )
@@ -61,7 +61,7 @@ defmodule Sombrero.Manager do
     Enum.each(ready_to_run_jobs, fn %{id: id} ->
       case lock_for_running(id) do
         {:ok, job} ->
-          Sombrero.Worker.start(job)
+          Rihanna.Worker.start(job)
 
         {:error, :missed_lock} ->
           :noop
@@ -72,9 +72,9 @@ defmodule Sombrero.Manager do
   defp sweep_for_expired_jobs() do
     now = DateTime.utc_now()
 
-    Sombrero.Repo.update_all(
+    Rihanna.Repo.update_all(
       from(
-        j in Sombrero.Job,
+        j in Rihanna.Job,
         where: j.state == "in_progress",
         where: j.expires_at < ^now
       ),
@@ -91,16 +91,16 @@ defmodule Sombrero.Manager do
     now = DateTime.utc_now()
 
     result =
-      Sombrero.Repo.update_all(
+      Rihanna.Repo.update_all(
         from(
-          j in Sombrero.Job,
+          j in Rihanna.Job,
           where: j.id == ^job_id,
           where: j.state == "ready_to_run"
         ),
         [
           set: [
             state: "in_progress",
-            expires_at: Sombrero.Job.expires_at(now),
+            expires_at: Rihanna.Job.expires_at(now),
             updated_at: now
           ]
         ],

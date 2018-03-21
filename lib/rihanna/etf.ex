@@ -1,4 +1,4 @@
-defmodule Sombrero.ETF do
+defmodule Rihanna.ETF do
   @behaviour Ecto.Type
 
   def type, do: :bytea
