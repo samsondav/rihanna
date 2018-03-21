@@ -70,13 +70,6 @@ defmodule Rihanna.JobManager do
     end
   end
 
-  # def heartbeat_at(now) do
-  #   now
-  #   |> DateTime.to_unix()
-  #   |> Kernel.+(@grace_time_seconds)
-  #   |> DateTime.from_unix!()
-  # end
-
   defp success(job_id) do
     Rihanna.Repo.delete_all(
       Query.from(
