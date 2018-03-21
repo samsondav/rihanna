@@ -17,11 +17,15 @@ defmodule Rihanna.Job do
   schema Rihanna.Config.jobs_table_name() do
     field(:mfa, Rihanna.ETF)
     field(:state, :string)
-    field(:expires_at, :utc_datetime)
+    field(:expires_at, :utc_datetime) # TODO: Use last_known_alive_at instead
     field(:failed_at, :utc_datetime)
     field(:fail_reason, :string)
 
     timestamps(inserted_at: :enqueued_at, type: :utc_datetime)
+  end
+
+  def start(job) do
+    GenServer.call(Rihanna.JobManager, job)
   end
 
   def retry_failed(job_id) when is_binary(job_id) or is_integer(job_id) do
