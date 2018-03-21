@@ -59,5 +59,5 @@ children = [
 
 Q. Why Rihanna?
 
-A. [Here's why](https://youtu.be/HL1UzIK-flA?t=18s).
+A. Because she knows how to [work, work, work, work, work](https://youtu.be/HL1UzIK-flA?t=18s).
 
