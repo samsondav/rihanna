@@ -51,12 +51,11 @@ defmodule Rihanna.Migration do
     """, "DROP FUNCTION IF EXISTS fn_notify_insert_job()"
 
     execute """
-    CREATE TRIGGER trg_notify_insert_job
-    AFTER INSERT
-    ON #{unquote(table_name)}
-    FOR EACH ROW
-    EXECUTE PROCEDURE fn_notify_insert_job();
+      CREATE TRIGGER trg_notify_insert_job
+      AFTER INSERT
+      ON #{unquote(table_name)}
+      FOR EACH ROW
+      EXECUTE PROCEDURE fn_notify_insert_job();
     """, "DROP TRIGGER IF EXISTS trg_notify_insert_job ON jobs"
-  end
   end
 end
