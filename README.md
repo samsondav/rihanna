@@ -2,6 +2,7 @@
 
 Rihanna is a postgres-backed job distributed job queue for Elixir.
 
+There is also a beautiful [UI](https://github.com/samphilipd/rihanna_ui)!
 
 ## Installation
 
