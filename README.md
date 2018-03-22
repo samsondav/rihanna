@@ -6,7 +6,7 @@ There is also a [beautiful UI](https://github.com/samphilipd/rihanna_ui)!
 
 ## Installation
 
-Add `rihanna` to your list of dependencies in `mix.exs`:
+1. Add `rihanna` to your list of dependencies in `mix.exs`:
 
 ```elixir
 def deps do
@@ -16,7 +16,19 @@ def deps do
 end
 ```
 
-#### ALTERNATIVE 1
+2. Install with `mix deps.get`.
+
+3. Run `mix ecto.gen.migration create_rihanna_jobs` and make your migration look like this:
+
+```elixir
+  require Rihanna.Migration
+
+  def change do
+    Rihanna.Migration.change()
+  end
+```
+
+#### CONFIG STYLE 1
 
 Add the full repo config to your `config.exs`
 
@@ -38,8 +50,7 @@ children = [
 ]
 ```
 
-
-#### ALTERNATIVE 2
+#### CONFIG STYLE 2
 
 Add a minimal repo config to your `config.exs`
 
