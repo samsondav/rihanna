@@ -46,7 +46,8 @@ defmodule TestHelper do
 
     for statement <- drop_sqls, do: Postgrex.query!(pg, statement, [])
     for statement <- create_sqls, do: Postgrex.query!(pg, statement, [])
-    :ok
+
+    {:ok, %{pg: pg}}
   end
 
   def truncate_postgres_jobs(ctx) do
@@ -54,6 +55,16 @@ defmodule TestHelper do
       TRUNCATE "rihanna_jobs
     """, [])
     :ok
+  end
+
+  def get_job_by_id(id, pg \\ Rihanna.Postgrex) do
+    %{rows: rows} = Postgrex.query!(pg, """
+    SELECT * FROM rihanna_jobs WHERE id = $1
+    """, [id])
+
+    [job] = Rihanna.Job.from_sql(rows)
+
+    job
   end
 
   defp config() do

@@ -1,5 +1,5 @@
 defmodule RihannaTest do
-  use ExUnit.Case
+  use ExUnit.Case, async: false
   doctest Rihanna
 
   import Rihanna
@@ -7,10 +7,35 @@ defmodule RihannaTest do
 
   setup_all [:create_jobs_table]
 
-  describe "enqueue/1" do
-    test "inserts a job to the DB" do
-      :ok = Rihanna.enqueue({IO, :puts, ["Work, work, work, work, work."]})
+  @mfa {IO, :puts, ["Work, work, work, work, work."]}
 
+  describe "enqueue/1" do
+    test "returns the job struct" do
+      {:ok, job} = Rihanna.enqueue(@mfa)
+
+      assert %Rihanna.Job{} = job
+      assert %DateTime{} = job.enqueued_at
+      assert job.fail_reason |> is_nil
+      assert job.failed_at |> is_nil
+      assert job.heartbeat_at |> is_nil
+      assert job.mfa == @mfa
+      assert job.state == "ready_to_run"
+      assert %DateTime{} = job.updated_at
+    end
+
+    test "inserts the job to the DB" do
+      {:ok, job} = Rihanna.enqueue(@mfa)
+
+      job = get_job_by_id(job.id)
+
+      assert %Rihanna.Job{} = job
+      assert %DateTime{} = job.enqueued_at
+      assert job.fail_reason |> is_nil
+      assert job.failed_at |> is_nil
+      assert job.heartbeat_at |> is_nil
+      assert job.mfa == @mfa
+      assert job.state == "ready_to_run"
+      assert %DateTime{} = job.updated_at
     end
 
     test "shows helpful error for invalid argument" do

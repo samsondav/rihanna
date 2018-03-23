@@ -1,4 +1,6 @@
 defmodule Rihanna.Job do
+  require Logger
+
   @moduledoc """
   Valid states are:
     ready_to_run
@@ -60,7 +62,6 @@ defmodule Rihanna.Job do
       UPDATE "#{table()}"
       SET
         state = 'ready_to_run',
-        heartbeat_at = NULL,
         updated_at = $1,
         enqueued_at = $1
       WHERE
@@ -73,6 +74,34 @@ defmodule Rihanna.Job do
 
       1 ->
         {:ok, :retried}
+    end
+  end
+
+  def lock_for_running(job_id) when is_binary(job_id) or is_integer(job_id) do
+    now = DateTime.utc_now()
+
+    result =
+      Rihanna.Job.query!("""
+        UPDATE "#{table()}"
+        SET
+          state = 'in_progress',
+          heartbeat_at = $1,
+          updated_at = $1
+        WHERE
+          id = $2, state = 'ready_to_run'
+        RETURNING
+          #{sql_fields()}
+        """, [now, job_id])
+
+    case result.num_rows do
+      1 ->
+        [job] = result.rows |> from_sql()
+        Logger.debug("Got lock for job #{job.id} in pid #{inspect(self())}")
+        {:ok, job}
+
+      0 ->
+        Logger.debug("Missed lock for job #{job_id} in pid #{inspect(self())}")
+        {:error, :missed_lock}
     end
   end
 

@@ -39,11 +39,7 @@ defmodule Rihanna.Migration do
         BEGIN
           PERFORM pg_notify(
             'insert_job',
-            json_build_object(
-              'table', TG_TABLE_NAME,
-              'type', TG_OP,
-              'id', NEW.id
-            )::text
+            NEW.id
           );
           RETURN NEW;
         END;

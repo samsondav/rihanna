@@ -29,12 +29,10 @@ defmodule Rihanna.Producer do
   end
 
   # TODO: Should probably match on this pid and ref
-  def handle_info(msg = {:notification, _pid, _ref, "insert_job", payload}, state) do
+  def handle_info(msg = {:notification, _pid, _ref, "insert_job", id}, state) do
     Logger.debug("Got notification: #{inspect(msg)}")
-    payload = Jason.decode!(payload)
-    id = payload["id"]
 
-    case lock_for_running(id) do
+    case Rihanna.Job.lock_for_running(id) do
       {:ok, job} ->
         Rihanna.Job.start(job)
 
@@ -60,7 +58,7 @@ defmodule Rihanna.Producer do
     # FIXME: This is not particularly efficient since it issues N updates where
     # N is the number of ready to run jobs
     Enum.each(ready_to_run_job_ids, fn id ->
-      case lock_for_running(id) do
+      case Rihanna.Job.lock_for_running(id) do
         {:ok, job} ->
           Rihanna.Job.start(job)
 
@@ -87,34 +85,6 @@ defmodule Rihanna.Producer do
       WHERE
         state = 'in_progress' AND j.heartbeat_at <= $2
       """, [now, assume_dead])
-  end
-
-  def lock_for_running(job_id) do
-    now = DateTime.utc_now()
-
-    result =
-      Rihanna.Job.query!("""
-        UPDATE "#{Rihanna.Job.table()}"
-        SET
-          state = 'in_progress',
-          heartbeat_at = $1,
-          updated_at = $1
-        WHERE
-          id = $2, state = 'ready_to_run'
-        RETURNING
-          #{Rihanna.Job.sql_fields()}
-        """, [now, job_id])
-
-    case result.num_rows do
-      1 ->
-        [job] = result.rows |> Rihanna.Job.from_sql
-        Logger.debug("Got lock for job #{job.id} in pid #{inspect(self())}")
-        {:ok, job}
-
-      0 ->
-        Logger.debug("Missed lock for job #{job_id} in pid #{inspect(self())}")
-        {:error, :missed_lock}
-    end
   end
 
   defp schedule_poll() do
