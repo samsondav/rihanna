@@ -11,7 +11,7 @@ defmodule Rihanna.JobTest do
 
   describe "retry_failed/1 when job is in 'failed' state" do
     setup %{pg: pg} do
-      result = Postgrex.query!(pg, """
+    result = Postgrex.query!(pg, """
       INSERT INTO "rihanna_jobs" (
         mfa,
         enqueued_at,
@@ -58,5 +58,22 @@ defmodule Rihanna.JobTest do
   end
 
   describe "retry_failed/1 when job is not in 'failed' state" do
+    setup %{pg: pg} do
+      {:ok, job} = Rihanna.Job.enqueue(@mfa)
+
+      {:ok, %{job: job}}
+    end
+
+    test "returns {:error, :job_not_found}", %{job: job} do
+      assert {:error, :job_not_found} = retry_failed(job.id)
+    end
+
+    test "does not change job", %{job: job} do
+      retry_failed(job.id)
+
+      updated_job = get_job_by_id(job.id)
+
+      assert updated_job == job
+    end
   end
 end
