@@ -81,7 +81,7 @@ defmodule Rihanna.Job do
     now = DateTime.utc_now()
 
     result =
-      Rihanna.Job.query!("""
+      query!("""
         UPDATE "#{table()}"
         SET
           state = 'in_progress',
@@ -105,15 +105,87 @@ defmodule Rihanna.Job do
     end
   end
 
-  def query!(query, params) do
+  def ready_to_run_ids() do
+    query!("""
+      SELECT id FROM "#{table()}"
+      WHERE state = 'ready_to_run'
+      """, [])
+    |> Map.fetch!(:rows)
+    |> Enum.map(fn [id] when is_integer(id) -> id end)
+  end
+
+  def mark_heartbeat(job_ids, now) do
+    {query_params, job_ids} = job_ids
+    |> Enum.with_index(2)
+    |> Enum.map(fn {job_id, idx} ->
+      {"$#{idx}", job_id}
+    end)
+    |> Enum.unzip()
+
+    %{rows: rows} = query!("""
+        UPDATE "#{table()}"
+        SET
+          heartbeat_at = $1,
+          updated_at = $1
+        WHERE
+          id IN (#{Enum.join(query_params, ", ")})
+        RETURNING id
+      """, [now | job_ids])
+
+    if length(rows) == length(job_ids) do
+      :ok
+    else
+      # TODO: Maybe return which ones succeeded and which didn't so the manager
+      # can deal with it?
+      {:error, :job_not_found}
+    end
+  end
+
+  # MARK: test from here down
+
+  def mark_successful(job_id) do
+    query!("""
+      DELETE FROM "#{table()}"
+      WHERE id = $1
+    """, [job_id] )
+  end
+
+  def mark_failed(job_id, now, fail_reason) do
+    query!("""
+      UPDATE "#{table()}"
+      SET
+        state = 'failed',
+        failed_at = $1,
+        fail_reason = $2,
+        heartbeat_at = NULL,
+        updated_at: $1
+      WHERE
+        id = $3
+    """, [now, fail_reason, job_id])
+  end
+
+  def sweep_for_expired(now, assume_dead) do
+   query!("""
+      UPDATE "#{table()}"
+      SET
+        state = "failed",
+        heartbeat_at = NULL,
+        failed_at = $1,
+        fail_reason = 'Unknown: worker went AWOL'
+      WHERE
+        state = 'in_progress' AND j.heartbeat_at <= $2
+      """, [now, assume_dead])
+  end
+
+  defp query!(query, params) do
     Postgrex.query!(Rihanna.Postgrex, query, params)
   end
 
-  def table() do
+  defp table() do
     Rihanna.Config.jobs_table_name()
   end
 
-  def sql_fields() do
+  defp sql_fields() do
     @fields
     |> Enum.map(&to_string/1)
     |> Enum.join(", ")

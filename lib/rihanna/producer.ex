@@ -1,6 +1,7 @@
 defmodule Rihanna.Producer do
   use GenServer
   require Logger
+  alias Rihanna.Job
 
   @baseline_poll_interval :timer.seconds(60)
 
@@ -28,17 +29,11 @@ defmodule Rihanna.Producer do
     {:noreply, state}
   end
 
-  # TODO: Should probably match on this pid and ref
-  def handle_info(msg = {:notification, _pid, _ref, "insert_job", id}, state) do
+  # NOTE: Should we match on this pid and ref?
+  def handle_info(msg = {:notification, _pid, _ref, "insert_job", job_id}, state) do
     Logger.debug("Got notification: #{inspect(msg)}")
 
-    case Rihanna.Job.lock_for_running(id) do
-      {:ok, job} ->
-        Rihanna.Job.start(job)
-
-      {:error, :missed_lock} ->
-        :noop
-    end
+    fire_off_job(job_id)
 
     {:noreply, state}
   end
@@ -46,26 +41,26 @@ defmodule Rihanna.Producer do
   defp fire_off_ready_to_run_jobs() do
     # Read all ready_to_run jobs from the queue and spin off tasks to execute
     # each one
-
-    ready_to_run_job_ids =
-      Rihanna.Job.query!("""
-        SELECT id FROM "#{Rihanna.Job.table()}"
-        WHERE state = 'ready_to_run'
-        """, [])
-      |> Map.fetch!(:rows)
-      |> Enum.map(fn [id] when is_integer(id) -> id end)
-
+    #
     # FIXME: This is not particularly efficient since it issues N updates where
     # N is the number of ready to run jobs
-    Enum.each(ready_to_run_job_ids, fn id ->
-      case Rihanna.Job.lock_for_running(id) do
-        {:ok, job} ->
-          Rihanna.Job.start(job)
-
-        {:error, :missed_lock} ->
-          :noop
-      end
+    #
+    # FIXME: Neither does it place any kind of limits on the number of workers started.
+    # i.e. if you read 10,000 jobs, then 10,000 workers will be concurrently spawned
+    # to handle them
+    Enum.each(Job.ready_to_run_ids(), fn job_id ->
+      fire_off_job(job_id)
     end)
+  end
+
+  defp fire_off_job(job_id) do
+    case Job.lock_for_running(job_id) do
+      {:ok, job} ->
+        Job.start(job)
+
+      {:error, :missed_lock} ->
+        :noop
+    end
   end
 
   defp sweep_for_expired_jobs() do
@@ -75,16 +70,7 @@ defmodule Rihanna.Producer do
     |> Kernel.-(@grace_time_seconds)
     |> DateTime.from_unix!()
 
-    Rihanna.Job.query!("""
-      UPDATE "#{Rihanna.Job.table()}"
-      SET
-        state = "failed",
-        heartbeat_at = NULL,
-        failed_at = $1,
-        fail_reason = 'Unknown: worker went AWOL'
-      WHERE
-        state = 'in_progress' AND j.heartbeat_at <= $2
-      """, [now, assume_dead])
+    Job.sweep_for_expired(now, assume_dead)
   end
 
   defp schedule_poll() do
