@@ -1,7 +1,4 @@
 defmodule Rihanna.Job do
-  use Ecto.Schema
-  require Ecto.Query, as: Query
-
   @moduledoc """
   Valid states are:
     ready_to_run
@@ -10,47 +7,86 @@ defmodule Rihanna.Job do
 
   """
 
-  schema Rihanna.Config.jobs_table_name() do
-    field(:mfa, Rihanna.ETF)
-    field(:state, :string)
-    field(:heartbeat_at, :utc_datetime)
-    field(:failed_at, :utc_datetime)
-    field(:fail_reason, :string)
+  @fields [
+    :id,
+    :mfa,
+    :enqueued_at,
+    :updated_at,
+    :state,
+    :heartbeat_at,
+    :failed_at,
+    :fail_reason
+  ]
 
-    timestamps(inserted_at: :enqueued_at, type: :utc_datetime)
-  end
+  defstruct @fields
 
   def start(job) do
     GenServer.call(Rihanna.JobManager, job)
   end
 
+  def enqueue(mfa) do
+    serialized_mfa = :erlang.term_to_binary(mfa)
+    now = DateTime.utc_now()
+
+    %{rows: [job]} = query!("""
+      INSERT INTO "#{table()}" (mfa, enqueued_at, updated_at, state)
+      VALUES ($1, $2, $2, 'ready_to_run')
+      RETURNING #{sql_fields()}
+    """, [serialized_mfa, now])
+
+    {:ok, from_sql(job)}
+  end
+
+  def from_sql(rows = [row | _]) when is_list(rows) and is_list(row) do
+    for row <- rows, do: from_sql(row)
+  end
+  def from_sql([id, serialized_mfa, enqueued_at, updated_at, state, heartbeat_at, failed_at, fail_reason]) do
+    %__MODULE__{
+      id: id,
+      mfa: :erlang.binary_to_term(serialized_mfa),
+      enqueued_at: enqueued_at,
+      updated_at: updated_at,
+      state: state,
+      heartbeat_at: heartbeat_at,
+      failed_at: failed_at,
+      fail_reason: fail_reason
+    }
+  end
+
   def retry_failed(job_id) when is_binary(job_id) or is_integer(job_id) do
     now = DateTime.utc_now()
 
-    result =
-      Rihanna.Repo.update_all(
-        Query.from(
-          j in Rihanna.Job,
-          where: j.state == "failed",
-          where: j.id == ^job_id
-        ),
-        [
-          set: [
-            state: "ready_to_run",
-            heartbeat_at: now,
-            updated_at: now,
-            enqueued_at: now
-          ]
-        ],
-        returning: true
-      )
+    result = query!("""
+      UPDATE "#{table()}"
+      SET
+        state = 'ready_to_run',
+        heartbeat_at = NULL,
+        updated_at = $1,
+        enqueued_at = $1
+      WHERE
+        state = 'failed' AND id = $2
+    """, [now, job_id])
 
-    case result do
-      {0, _} ->
+    case result.num_rows do
+      0 ->
         {:error, :job_not_found}
 
-      {1, [_job]} ->
+      1 ->
         {:ok, :retried}
     end
+  end
+
+  def query!(query, params) do
+    Postgrex.query!(Rihanna.Postgrex, query, params)
+  end
+
+  def table() do
+    Rihanna.Config.jobs_table_name()
+  end
+
+  def sql_fields() do
+    @fields
+    |> Enum.map(&to_string/1)
+    |> Enum.join(", ")
   end
 end

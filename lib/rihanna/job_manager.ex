@@ -1,7 +1,6 @@
 defmodule Rihanna.JobManager do
   use GenServer
   require Logger
-  require Ecto.Query, as: Query
 
   # Wait a maximum of half of grace time to issue a new heartbeat
   @hearbeat_interval round(:timer.seconds(Rihanna.Producer.grace_time_seconds()) / 2)
@@ -49,6 +48,7 @@ defmodule Rihanna.JobManager do
     Logger.debug("HEARTBEAT from #{inspect(self())} updating #{length(job_ids)} jobs")
 
     extend_expiry(job_ids)
+
     {:noreply, state}
   end
 
@@ -56,46 +56,39 @@ defmodule Rihanna.JobManager do
     now = DateTime.utc_now()
 
     if Enum.any?(job_ids) do
-      {_n, nil} =
-        Rihanna.Repo.update_all(
-          Query.from(
-            j in Rihanna.Job,
-            where: j.id in ^job_ids
-          ),
-          set: [
-            heartbeat_at: now,
-            updated_at: now
-          ]
-        )
+      Rihanna.Job.query!("""
+        UPDATE "#{Rihanna.Job.table()}"
+        SET
+          heartbeat_at = $1,
+          updated_at = $1
+        WHERE
+          id IN $2
+      """, [now, job_ids]
+      )
     end
   end
 
   defp success(job_id) do
-    Rihanna.Repo.delete_all(
-      Query.from(
-        j in Rihanna.Job,
-        where: j.id == ^job_id
-      )
-    )
+    Rihanna.Job.query!("""
+      DELETE FROM "#{Rihanna.Job.table()}"
+      WHERE id = $1
+    """, [job_id] )
   end
 
   defp failure(job_id, reason) do
     now = DateTime.utc_now()
 
-    {1, nil} =
-      Rihanna.Repo.update_all(
-        Query.from(
-          j in Rihanna.Job,
-          where: j.id == ^job_id
-        ),
-        set: [
-          state: "failed",
-          failed_at: now,
-          fail_reason: Exception.format_exit(reason),
-          heartbeat_at: nil,
-          updated_at: now
-        ]
-      )
+    Rihanna.Job.query!("""
+      UPDATE "#{Rihanna.Job.table()}"
+      SET
+        state = 'failed',
+        failed_at = $1,
+        fail_reason = $2,
+        heartbeat_at = NULL,
+        updated_at: $1
+      WHERE
+        id = $3
+    """, [now, Exception.format_exit(reason), job_id])
   end
 
   defp start_timer() do

@@ -67,6 +67,10 @@ children = [
 ]
 ```
 
+#### TESTING
+
+1. Create a table called "rihanna_test"
+
 ## FAQs
 
 Q. Why Rihanna?

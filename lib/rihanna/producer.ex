@@ -1,7 +1,6 @@
 defmodule Rihanna.Producer do
   use GenServer
   require Logger
-  import Ecto.Query
 
   @baseline_poll_interval :timer.seconds(60)
 
@@ -15,7 +14,7 @@ defmodule Rihanna.Producer do
   end
 
   def init(state) do
-    {:ok, _ref} = Postgrex.Notifications.listen(Rihanna.PGNotifier, "insert_job")
+    {:ok, _ref} = Postgrex.Notifications.listen(Rihanna.Postgrex.Notifications, "insert_job")
 
     Process.send(self(), :poll, [])
     {:ok, state}
@@ -50,18 +49,17 @@ defmodule Rihanna.Producer do
     # Read all ready_to_run jobs from the queue and spin off tasks to execute
     # each one
 
-    ready_to_run_jobs =
-      Rihanna.Repo.all(
-        from(
-          Rihanna.Job,
-          where: [state: "ready_to_run"],
-          select: [:id]
-        )
-      )
+    ready_to_run_job_ids =
+      Rihanna.Job.query!("""
+        SELECT id FROM "#{Rihanna.Job.table()}"
+        WHERE state = 'ready_to_run'
+        """, [])
+      |> Map.fetch!(:rows)
+      |> Enum.map(fn [id] when is_integer(id) -> id end)
 
     # FIXME: This is not particularly efficient since it issues N updates where
     # N is the number of ready to run jobs
-    Enum.each(ready_to_run_jobs, fn %{id: id} ->
+    Enum.each(ready_to_run_job_ids, fn id ->
       case lock_for_running(id) do
         {:ok, job} ->
           Rihanna.Job.start(job)
@@ -72,7 +70,6 @@ defmodule Rihanna.Producer do
     end)
   end
 
-  #
   defp sweep_for_expired_jobs() do
     now = DateTime.utc_now()
     assume_dead = now
@@ -80,47 +77,41 @@ defmodule Rihanna.Producer do
     |> Kernel.-(@grace_time_seconds)
     |> DateTime.from_unix!()
 
-    Rihanna.Repo.update_all(
-      from(
-        j in Rihanna.Job,
-        where: j.state == "in_progress",
-        where: j.heartbeat_at <= ^assume_dead
-      ),
-      set: [
-        state: "failed",
-        heartbeat_at: nil,
-        failed_at: now,
-        fail_reason: "Unknown: worker went AWOL"
-      ]
-    )
+    Rihanna.Job.query!("""
+      UPDATE "#{Rihanna.Job.table()}"
+      SET
+        state = "failed",
+        heartbeat_at = NULL,
+        failed_at = $1,
+        fail_reason = 'Unknown: worker went AWOL'
+      WHERE
+        state = 'in_progress' AND j.heartbeat_at <= $2
+      """, [now, assume_dead])
   end
 
   def lock_for_running(job_id) do
     now = DateTime.utc_now()
 
     result =
-      Rihanna.Repo.update_all(
-        from(
-          j in Rihanna.Job,
-          where: j.id == ^job_id,
-          where: j.state == "ready_to_run"
-        ),
-        [
-          set: [
-            state: "in_progress",
-            heartbeat_at: now,
-            updated_at: now
-          ]
-        ],
-        returning: true
-      )
+      Rihanna.Job.query!("""
+        UPDATE "#{Rihanna.Job.table()}"
+        SET
+          state = 'in_progress',
+          heartbeat_at = $1,
+          updated_at = $1
+        WHERE
+          id = $2, state = 'ready_to_run'
+        RETURNING
+          #{Rihanna.Job.sql_fields()}
+        """, [now, job_id])
 
-    case result do
-      {1, [job]} ->
+    case result.num_rows do
+      1 ->
+        [job] = result.rows |> Rihanna.Job.from_sql
         Logger.debug("Got lock for job #{job.id} in pid #{inspect(self())}")
         {:ok, job}
 
-      {0, _} ->
+      0 ->
         Logger.debug("Missed lock for job #{job_id} in pid #{inspect(self())}")
         {:error, :missed_lock}
     end

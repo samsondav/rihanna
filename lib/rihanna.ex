@@ -3,12 +3,7 @@ defmodule Rihanna do
   TODO: Write some documentation for Rihanna.
   """
   def enqueue(mfa = {mod, fun, args}) when is_atom(mod) and is_atom(fun) and is_list(args) do
-    job = %Rihanna.Job{
-      mfa: mfa,
-      state: "ready_to_run"
-    }
-
-    Rihanna.Repo.insert(job)
+    Rihanna.Job.enqueue(mfa)
   end
 
   def enqueue(_) do

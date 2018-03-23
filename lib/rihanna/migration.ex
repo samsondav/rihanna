@@ -3,11 +3,10 @@ defmodule Rihanna.Migration do
     quote do
       create table(unquote(table_name)) do
         add :mfa, :bytea, null: false
-        add :enqueued_at, :utc_datetime, null: false
-        add :updated_at, :utc_datetime, null: false
+        timestamps(type: :timestamptz, inserted_at: :enqueued_at)
         add :state, :string, null: false, default: "ready_to_run"
-        add :heartbeat_at, :utc_datetime
-        add :failed_at, :utc_datetime
+        add :heartbeat_at, :timestamptz
+        add :failed_at, :timestamptz
         add :fail_reason, :text
       end
 

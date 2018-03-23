@@ -12,8 +12,8 @@ defmodule Rihanna.Supervisor do
 
   def init(config) do
     children = [
-      {Rihanna.Repo, config},
-      worker(Postgrex.Notifications, [config ++ [name: Rihanna.PGNotifier]]),
+      {Postgrex, Keyword.put(config, :name, Rihanna.Postgrex)},
+      worker(Postgrex.Notifications, Keyword.put(config, :name, Rihanna.Postgrex)),
       {Task.Supervisor, name: Rihanna.JobSupervisor},
       {Rihanna.JobManager, [name: Rihanna.JobManager]},
       Rihanna.Producer
