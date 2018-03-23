@@ -88,7 +88,7 @@ defmodule Rihanna.Job do
           heartbeat_at = $1,
           updated_at = $1
         WHERE
-          id = $2, state = 'ready_to_run'
+          id = $2 AND state = 'ready_to_run'
         RETURNING
           #{sql_fields()}
         """, [now, job_id])

@@ -67,6 +67,48 @@ defmodule TestHelper do
     job
   end
 
+  @test_mfa {IO, :puts, ["Desperado, sittin' in an old Monte Carlo"]}
+
+  def insert_job(_pg, :ready_to_run) do
+    {:ok, job} = Rihanna.Job.enqueue(@test_mfa)
+    job
+  end
+  def insert_job(pg, :in_progress) do
+    result = Postgrex.query!(pg, """
+      INSERT INTO "rihanna_jobs" (
+        mfa,
+        enqueued_at,
+        updated_at,
+        state,
+        heartbeat_at
+      )
+      VALUES ($1, '2018-01-01', '2018-01-02', 'in_progress', NOW())
+      RETURNING *
+      """, [:erlang.term_to_binary(@test_mfa)])
+
+    [job] = Rihanna.Job.from_sql(result.rows)
+
+    job
+  end
+  def insert_job(pg, :failed) do
+    result = Postgrex.query!(pg, """
+      INSERT INTO "rihanna_jobs" (
+        mfa,
+        enqueued_at,
+        updated_at,
+        state,
+        failed_at,
+        fail_reason
+      )
+      VALUES ($1, '2018-01-01', '2018-01-01', 'failed', '2018-01-01', 'Kaboom!')
+      RETURNING *
+      """, [:erlang.term_to_binary(@test_mfa)])
+
+    [job] = Rihanna.Job.from_sql(result.rows)
+
+    job
+  end
+
   defp config() do
     [
       hostname: "localhost",
