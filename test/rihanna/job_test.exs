@@ -125,9 +125,14 @@ defmodule Rihanna.JobTest do
 
   describe "ready_to_run_ids/0" do
     setup %{pg: pg} do
-      Postgrex.query!(pg, """
-      DELETE FROM rihanna_jobs;
-      """, [])
+      Postgrex.query!(
+        pg,
+        """
+        DELETE FROM rihanna_jobs;
+        """,
+        []
+      )
+
       ready_to_run_jobs = for _ <- 1..3, do: insert_job(pg, :ready_to_run)
       insert_job(pg, :in_progress)
       insert_job(pg, :failed)
@@ -146,39 +151,44 @@ defmodule Rihanna.JobTest do
       job_ids = for _ <- 1..3, do: insert_job(pg, :in_progress).id
 
       now = DateTime.utc_now()
-      mark_heartbeat(job_ids, now)
 
-      Enum.each job_ids, fn id ->
+      assert %{
+               alive: job_ids,
+               gone: []
+             } = mark_heartbeat(job_ids, now)
+
+      Enum.each(job_ids, fn id ->
         job = get_job_by_id(id)
         assert job.heartbeat_at == now
         assert job.updated_at == now
-      end
+      end)
     end
 
-    test "raises error if any job is in 'ready_to_run' state", %{pg: pg} do
+    test "returns job in 'ready_to_run' state as removed", %{pg: pg} do
       job_ids = [insert_job(pg, :ready_to_run).id]
 
-      now = DateTime.utc_now()
-      assert_raise Postgrex.Error, fn ->
-      mark_heartbeat(job_ids, now)
-    end
+      assert %{
+               alive: [],
+               gone: ^job_ids
+             } = mark_heartbeat(job_ids, DateTime.utc_now())
     end
 
-    test "raises error if any job is in 'failed' state", %{pg: pg} do
+    test "returns job in 'failed' state as removed", %{pg: pg} do
       job_ids = [insert_job(pg, :failed).id]
 
-      now = DateTime.utc_now()
-      assert_raise Postgrex.Error, fn ->
-      mark_heartbeat(job_ids, now)
-    end
+      assert %{
+               alive: [],
+               gone: ^job_ids
+             } = mark_heartbeat(job_ids, DateTime.utc_now())
     end
 
-    test "raises error if any job is not found", %{pg: pg} do
+    test "returns deleted job as removed" do
       job_ids = [-1]
 
-      now = DateTime.utc_now()
-
-      assert mark_heartbeat(job_ids, now) == {:error, :job_not_found}
+      assert %{
+               alive: [],
+               gone: [-1]
+             } = mark_heartbeat(job_ids, DateTime.utc_now())
     end
   end
 end

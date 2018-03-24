@@ -46,6 +46,7 @@ defmodule RihannaTest do
 
       > Rihanna.enqueue({IO, :puts, ["Hello"]})
       """
+
       assert_raise ArgumentError, expected_message, fn ->
         enqueue("not a MFA")
       end

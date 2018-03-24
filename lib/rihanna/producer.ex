@@ -65,10 +65,12 @@ defmodule Rihanna.Producer do
 
   defp sweep_for_expired_jobs() do
     now = DateTime.utc_now()
-    assume_dead = now
-    |> DateTime.to_unix()
-    |> Kernel.-(@grace_time_seconds)
-    |> DateTime.from_unix!()
+
+    assume_dead =
+      now
+      |> DateTime.to_unix()
+      |> Kernel.-(@grace_time_seconds)
+      |> DateTime.from_unix!()
 
     Job.sweep_for_expired(now, assume_dead)
   end

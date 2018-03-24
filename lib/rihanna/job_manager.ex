@@ -16,11 +16,13 @@ defmodule Rihanna.JobManager do
 
   def handle_call(job, _from, state) do
     %{mfa: {mod, fun, args}} = job
-    task = Task.Supervisor.async_nolink(Rihanna.JobSupervisor, fn ->
-      result = apply(mod, fun, args)
-      success(job.id)
-      result
-    end)
+
+    task =
+      Task.Supervisor.async_nolink(Rihanna.JobSupervisor, fn ->
+        result = apply(mod, fun, args)
+        success(job.id)
+        result
+      end)
 
     state = Map.put(state, task.ref, job)
 
@@ -46,9 +48,10 @@ defmodule Rihanna.JobManager do
   end
 
   def handle_info(:heartbeat, state) do
-    job_ids = state
-    |> Map.values()
-    |> Enum.map(fn %{id: id} -> id end)
+    job_ids =
+      state
+      |> Map.values()
+      |> Enum.map(fn %{id: id} -> id end)
 
     heartbeat(job_ids)
 
@@ -56,11 +59,13 @@ defmodule Rihanna.JobManager do
   end
 
   defp heartbeat([]), do: :noop
+
   defp heartbeat(job_ids) do
     Logger.debug("HEARTBEAT #{length(job_ids)} jobs are running")
 
     now = DateTime.utc_now()
-    Rihanna.Job.mark_heartbeat(job_ids, now)
+
+    :ok = Rihanna.Job.mark_heartbeat(job_ids, now)
   end
 
   defp success(job_id) do

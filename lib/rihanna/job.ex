@@ -30,11 +30,15 @@ defmodule Rihanna.Job do
     serialized_mfa = :erlang.term_to_binary(mfa)
     now = DateTime.utc_now()
 
-    %{rows: [job]} = query!("""
-      INSERT INTO "#{table()}" (mfa, enqueued_at, updated_at, state)
-      VALUES ($1, $2, $2, 'ready_to_run')
-      RETURNING #{sql_fields()}
-    """, [serialized_mfa, now])
+    %{rows: [job]} =
+      query!(
+        """
+          INSERT INTO "#{table()}" (mfa, enqueued_at, updated_at, state)
+          VALUES ($1, $2, $2, 'ready_to_run')
+          RETURNING #{sql_fields()}
+        """,
+        [serialized_mfa, now]
+      )
 
     {:ok, from_sql(job)}
   end
@@ -42,7 +46,17 @@ defmodule Rihanna.Job do
   def from_sql(rows = [row | _]) when is_list(rows) and is_list(row) do
     for row <- rows, do: from_sql(row)
   end
-  def from_sql([id, serialized_mfa, enqueued_at, updated_at, state, heartbeat_at, failed_at, fail_reason]) do
+
+  def from_sql([
+        id,
+        serialized_mfa,
+        enqueued_at,
+        updated_at,
+        state,
+        heartbeat_at,
+        failed_at,
+        fail_reason
+      ]) do
     %__MODULE__{
       id: id,
       mfa: :erlang.binary_to_term(serialized_mfa),
@@ -58,15 +72,19 @@ defmodule Rihanna.Job do
   def retry_failed(job_id) when is_binary(job_id) or is_integer(job_id) do
     now = DateTime.utc_now()
 
-    result = query!("""
-      UPDATE "#{table()}"
-      SET
-        state = 'ready_to_run',
-        updated_at = $1,
-        enqueued_at = $1
-      WHERE
-        state = 'failed' AND id = $2
-    """, [now, job_id])
+    result =
+      query!(
+        """
+          UPDATE "#{table()}"
+          SET
+            state = 'ready_to_run',
+            updated_at = $1,
+            enqueued_at = $1
+          WHERE
+            state = 'failed' AND id = $2
+        """,
+        [now, job_id]
+      )
 
     case result.num_rows do
       0 ->
@@ -81,7 +99,8 @@ defmodule Rihanna.Job do
     now = DateTime.utc_now()
 
     result =
-      query!("""
+      query!(
+        """
         UPDATE "#{table()}"
         SET
           state = 'in_progress',
@@ -91,7 +110,9 @@ defmodule Rihanna.Job do
           id = $2 AND state = 'ready_to_run'
         RETURNING
           #{sql_fields()}
-        """, [now, job_id])
+        """,
+        [now, job_id]
+      )
 
     case result.num_rows do
       1 ->
@@ -106,66 +127,82 @@ defmodule Rihanna.Job do
   end
 
   def ready_to_run_ids() do
-    query!("""
+    query!(
+      """
       SELECT id FROM "#{table()}"
       WHERE state = 'ready_to_run'
-      """, [])
+      """,
+      []
+    )
     |> Map.fetch!(:rows)
     |> Enum.map(fn [id] when is_integer(id) -> id end)
   end
 
   def mark_heartbeat(job_ids, now) do
-    {query_params, job_ids} = job_ids
-    |> Enum.with_index(2)
-    |> Enum.map(fn {job_id, idx} ->
-      {"$#{idx}", job_id}
-    end)
-    |> Enum.unzip()
+    {query_params, job_ids} =
+      job_ids
+      |> Enum.with_index(2)
+      |> Enum.map(fn {job_id, idx} ->
+        {"$#{idx}", job_id}
+      end)
+      |> Enum.unzip()
 
-    %{rows: rows} = query!("""
-        UPDATE "#{table()}"
-        SET
-          heartbeat_at = $1,
-          updated_at = $1
-        WHERE
-          id IN (#{Enum.join(query_params, ", ")})
-        RETURNING id
-      """, [now | job_ids])
+    %{rows: rows} =
+      query!(
+        """
+          UPDATE "#{table()}"
+          SET
+            heartbeat_at = $1,
+            updated_at = $1
+          WHERE
+            id IN (#{Enum.join(query_params, ", ")})
+              AND
+            state = 'in_progress'
+          RETURNING id
+        """,
+        [now | job_ids]
+      )
 
-    if length(rows) == length(job_ids) do
-      :ok
-    else
-      # TODO: Maybe return which ones succeeded and which didn't so the manager
-      # can deal with it?
-      {:error, :job_not_found}
-    end
+    alive_job_ids = for [id] <- rows, do: id
+
+    %{
+      alive: alive_job_ids,
+      gone: job_ids -- alive_job_ids
+    }
   end
 
   # MARK: test from here down
 
   def mark_successful(job_id) do
-    query!("""
-      DELETE FROM "#{table()}"
-      WHERE id = $1
-    """, [job_id] )
+    query!(
+      """
+        DELETE FROM "#{table()}"
+        WHERE id = $1
+      """,
+      [job_id]
+    )
   end
 
   def mark_failed(job_id, now, fail_reason) do
-    query!("""
-      UPDATE "#{table()}"
-      SET
-        state = 'failed',
-        failed_at = $1,
-        fail_reason = $2,
-        heartbeat_at = NULL,
-        updated_at: $1
-      WHERE
-        id = $3
-    """, [now, fail_reason, job_id])
+    query!(
+      """
+        UPDATE "#{table()}"
+        SET
+          state = 'failed',
+          failed_at = $1,
+          fail_reason = $2,
+          heartbeat_at = NULL,
+          updated_at: $1
+        WHERE
+          id = $3
+      """,
+      [now, fail_reason, job_id]
+    )
   end
 
   def sweep_for_expired(now, assume_dead) do
-   query!("""
+    query!(
+      """
       UPDATE "#{table()}"
       SET
         state = "failed",
@@ -174,7 +211,9 @@ defmodule Rihanna.Job do
         fail_reason = 'Unknown: worker went AWOL'
       WHERE
         state = 'in_progress' AND j.heartbeat_at <= $2
-      """, [now, assume_dead])
+      """,
+      [now, assume_dead]
+    )
   end
 
   defp query!(query, params) do
