@@ -98,7 +98,7 @@ defmodule TestHelper do
           state,
           heartbeat_at
         )
-        VALUES ($1, '2018-01-01', '2018-01-02', 'in_progress', NOW())
+        VALUES ($1, '2018-01-01', '2018-01-02', 'in_progress', '2018-01-02')
         RETURNING *
         """,
         [:erlang.term_to_binary(@test_mfa)]
@@ -134,13 +134,10 @@ defmodule TestHelper do
   end
 
   defp config() do
-    [
-      hostname: "localhost",
-      username: "nested",
-      password: "nested",
-      database: "rihanna_test",
-      name: Rihanna.Postgrex,
-      port: 54321
-    ]
+    Keyword.put(
+      Application.fetch_env!(:rihanna, :postgrex),
+      :name,
+      Rihanna.Postgrex
+    )
   end
 end

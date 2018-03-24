@@ -53,7 +53,15 @@ defmodule Rihanna.JobManager do
       |> Map.values()
       |> Enum.map(fn %{id: id} -> id end)
 
-    heartbeat(job_ids)
+    %{
+      alive: alive,
+      gone: gone
+    } = heartbeat(job_ids)
+
+    if Enum.any?(gone) do
+      # TODO: What should we do here? Terminate the jobs?
+      Logger.warn("Jobs were not found: #{inspect(gone)}")
+    end
 
     {:noreply, state}
   end
@@ -65,7 +73,7 @@ defmodule Rihanna.JobManager do
 
     now = DateTime.utc_now()
 
-    :ok = Rihanna.Job.mark_heartbeat(job_ids, now)
+    Rihanna.Job.mark_heartbeat(job_ids, now)
   end
 
   defp success(job_id) do

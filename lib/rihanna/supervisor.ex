@@ -18,7 +18,9 @@ defmodule Rihanna.Supervisor do
       },
       %{
         id: Rihanna.Postgrex.Notifications,
-        start: {Postgrex.Notifications, :start_link, [Keyword.put(db, :name, Rihanna.Postgrex.Notifications)]}
+        start:
+          {Postgrex.Notifications, :start_link,
+           [Keyword.put(db, :name, Rihanna.Postgrex.Notifications)]}
       },
       {Task.Supervisor, name: Rihanna.JobSupervisor},
       {Rihanna.JobManager, name: Rihanna.JobManager},

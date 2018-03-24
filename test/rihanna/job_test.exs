@@ -1,7 +1,5 @@
 defmodule Rihanna.JobTest do
   use ExUnit.Case, async: false
-  doctest Rihanna
-
   import Rihanna.Job
   import TestHelper
 
