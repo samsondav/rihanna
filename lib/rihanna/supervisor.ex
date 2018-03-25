@@ -16,12 +16,17 @@ defmodule Rihanna.Supervisor do
         id: Rihanna.Job.Postgrex,
         start: {Postgrex, :start_link, [Keyword.put(db, :name, Rihanna.Job.Postgrex)]}
       },
-      {Task.Supervisor, name: Rihanna.TaskSupervisor},
-      %{
-        id: Rihanna.JobDispatcher,
-        start: {Rihanna.JobDispatcher, :start_link, [[db: db], [name: Rihanna.JobDispatcher]]}
-      }
+      {Task.Supervisor, name: Rihanna.TaskSupervisor}
     ]
+
+    dispatchers = Enum.map(0..10, fn n ->
+      %{
+        id: String.to_atom("Rihanna.JobDispatcher-#{n}"),
+        start: {Rihanna.JobDispatcher, :start_link, [[db: db], [name: String.to_atom("Rihanna.JobDispatcher-#{n}")]]}
+      }
+    end)
+
+    children = children ++ dispatchers
 
     Supervisor.init(children, strategy: :one_for_one)
   end

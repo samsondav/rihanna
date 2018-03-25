@@ -1,6 +1,8 @@
 defmodule Rihanna.Migration do
   defmacro change(table_name \\ "rihanna_jobs") do
     quote do
+      # FIXME: NEEDS an index on the job lookup condition!
+
       create table(unquote(table_name)) do
         add(:mfa, :bytea, null: false)
         timestamps(type: :timestamptz, inserted_at: :enqueued_at)
