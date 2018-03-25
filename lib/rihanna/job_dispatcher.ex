@@ -21,6 +21,34 @@ defmodule Flusher do
   end
 end
 
+defmodule Timer do
+  use GenServer
+
+  def start_link(db) do
+    {:ok, pg} = Postgrex.start_link(db)
+
+    GenServer.start_link(__MODULE__, %{pg: pg, start: :erlang.timestamp(), reported: false}, [])
+  end
+
+  def init(state) do
+    IO.puts "Timer starting"
+    Process.send(self(), :poll, [])
+    {:ok, state}
+  end
+
+  def handle_info(:poll, state = %{pg: pg, start: start, reported: reported}) do
+    now = :erlang.timestamp
+    %{num_rows: count} = Postgrex.query!(pg, "SELECT * FROM rihanna_jobs LIMIT 1", [])
+    if count == 0 and not reported do
+      IO.puts "DONE in #{:timer.now_diff(now, start) / 1000}ms"
+      state = Map.put(state, :reported, true)
+    end
+    Process.send_after(self(), :poll, 100)
+
+    {:noreply, state}
+  end
+end
+
 defmodule Rihanna.JobDispatcher do # TODO: Is WorkerPool a better name?
   use GenServer
   require Logger
@@ -56,31 +84,36 @@ defmodule Rihanna.JobDispatcher do # TODO: Is WorkerPool a better name?
     # Fill the pipeline with as much work as we can get
     available_concurrency = @max_concurrency - Enum.count(working)
 
-    # jobs = lock_jobs(pg, working, available_concurrency)
+    jobs = lock_jobs(pg, available_concurrency)
 
-    # {us, working} = :timer.tc fn ->
-    #   for job <- jobs, into: working do
-    #     task = spawn_supervised_task(job)
-    #     {task.ref, job}
-    #   end
-    # end
-    # if Enum.any?(working) do
-    #   # IO.puts("TOOK: #{us / 1000}ms to spawn tasks")
-    # end
-        working = Enum.reduce_while(1..available_concurrency, working, fn _, acc ->
-      case lock_one_job(pg, acc) do
-        nil ->
-          {:halt, acc}
-        job ->
-          postgrex_connection_id = Postgrex.query!(pg, "SELECT 1",[]).connection_id
-          IO.puts "#{self() |> inspect} locked #{job.id} - pg pid was #{inspect pg}, connection_id #{postgrex_connection_id}"
-          task = spawn_supervised_task(job)
-          Process.send(elem(job.mfa, 2) |> hd, {self(), job.id}, [])
-          {:cont, Map.put(acc, task.ref, job)}
+    {us, working} = :timer.tc fn ->
+      for job <- jobs, into: working do
+        task = spawn_supervised_task(job)
+        {task.ref, job}
       end
-    end)
+    end
 
-    Process.send_after(self(), :poll, @poll_interval)
+    if Enum.any?(jobs) do
+      # Logger.debug("Spawned #{length(jobs)} in #{us / 1000}ms")
+    end
+
+    # if Enum.any?(working) do
+    #   # IO.puts("TOOK:  to spawn tasks")
+    # end
+    #     working = Enum.reduce_while(1..available_concurrency, working, fn _, acc ->
+    #   case lock_one_job(pg, acc) do
+    #     nil ->
+    #       {:halt, acc}
+    #     job ->
+    #       postgrex_connection_id = Postgrex.query!(pg, "SELECT 1",[]).connection_id
+    #       IO.puts "#{self() |> inspect} locked #{job.id} - pg pid was #{inspect pg}, connection_id #{postgrex_connection_id}"
+    #       task = spawn_supervised_task(job)
+    #       Process.send(elem(job.mfa, 2) |> hd, {self(), job.id}, [])
+    #       {:cont, Map.put(acc, task.ref, job)}
+    #   end
+    # end)
+
+    Process.send_after(self(), :poll, @poll_interval + :rand.uniform(50))
 
     {:noreply, Map.put(state, :working, working)}
   end
@@ -100,7 +133,7 @@ defmodule Rihanna.JobDispatcher do # TODO: Is WorkerPool a better name?
 
 
     # Attempt to lock ONE new job to replace
-    # working = case lock_one_job(pg, working) do
+    # working = case lock_one_job(pg) do
     #   nil ->
     #     working
     #   job ->
@@ -147,8 +180,8 @@ defmodule Rihanna.JobDispatcher do # TODO: Is WorkerPool a better name?
     :ok
   end
 
-  defp lock_one_job(pg, working) do
-    case lock_jobs(pg, working, 1) do
+  defp lock_one_job(pg) do
+    case lock_jobs(pg, 1) do
       [job] ->
         job
       [] ->
@@ -156,26 +189,17 @@ defmodule Rihanna.JobDispatcher do # TODO: Is WorkerPool a better name?
     end
   end
 
-  defp lock_jobs(pg, working, n) do
-    {locks_already_held, job_ids} = working
-    |> Map.values
-    |> Enum.map(fn job -> job.id end)
-    |> Enum.with_index(2)
-    |> Enum.map(fn {job_id, idx} ->
-      {"$#{idx}", job_id}
-    end)
-    |> Enum.unzip()
-
-    locks_already_held = Enum.join(locks_already_held, ", ")
-
+  defp lock_jobs(pg, n) do
     lock_jobs = """
       WITH RECURSIVE jobs AS (
         SELECT (j).*, pg_try_advisory_lock((j).id) AS locked
         FROM (
           SELECT j
           FROM #{Rihanna.Job.table()} AS j
-          WHERE state = 'ready_to_run'
-          #{if Enum.any?(job_ids), do: "AND id NOT IN (#{locks_already_held})"}
+          LEFT OUTER JOIN locks_held_by_this_job_dispatcher lh
+          ON lh.id = j.id
+          WHERE lh.id IS NULL
+          AND state = 'ready_to_run'
           ORDER BY enqueued_at, j.id
           FOR UPDATE SKIP LOCKED
           LIMIT 1
@@ -186,8 +210,10 @@ defmodule Rihanna.JobDispatcher do # TODO: Is WorkerPool a better name?
             SELECT (
               SELECT j
               FROM #{Rihanna.Job.table()} AS j
-              WHERE state = 'ready_to_run'
-              #{if Enum.any?(job_ids), do: "AND id NOT IN (#{locks_already_held})"}
+              LEFT OUTER JOIN locks_held_by_this_job_dispatcher lh
+              ON lh.id = j.id
+              WHERE lh.id IS NULL
+              AND state = 'ready_to_run'
               AND (j.enqueued_at, j.id) > (jobs.enqueued_at, jobs.id)
               ORDER BY enqueued_at, j.id
               FOR UPDATE SKIP LOCKED
@@ -198,6 +224,12 @@ defmodule Rihanna.JobDispatcher do # TODO: Is WorkerPool a better name?
             LIMIT 1
           ) AS t1
         )
+      ),
+      locks_held_by_this_job_dispatcher AS (
+        SELECT objid AS id
+        FROM pg_locks pl
+        WHERE locktype = 'advisory'
+        AND pl.pid = pg_backend_pid()
       )
       SELECT id, mfa, enqueued_at, updated_at, state, heartbeat_at, failed_at, fail_reason
       FROM jobs
@@ -205,13 +237,13 @@ defmodule Rihanna.JobDispatcher do # TODO: Is WorkerPool a better name?
       LIMIT $1;
     """
 
-    params = [n | job_ids]
-
     {execution_time, %{rows: rows}} = :timer.tc(fn ->
-      Postgrex.query!(pg, lock_jobs, params)
+      Postgrex.query!(pg, lock_jobs, [n])
     end)
 
-    # Logger.info("Locking #{length(rows)} jobs took #{execution_time / 1000}ms")
+    if Enum.any?(rows) do
+      # Logger.debug("Locking #{length(rows)} jobs took #{execution_time / 1000}ms")
+    end
 
     Rihanna.Job.from_sql(rows)
   end
