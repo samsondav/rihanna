@@ -16,15 +16,15 @@ defmodule Rihanna.Supervisor do
         id: Rihanna.Postgrex,
         start: {Postgrex, :start_link, [Keyword.put(db, :name, Rihanna.Postgrex)]}
       },
-      %{
-        id: Rihanna.Postgrex.Notifications,
-        start:
-          {Postgrex.Notifications, :start_link,
-           [Keyword.put(db, :name, Rihanna.Postgrex.Notifications)]}
-      },
+      # %{
+      #   id: Rihanna.Postgrex.Notifications,
+      #   start:
+      #     {Postgrex.Notifications, :start_link,
+      #      [Keyword.put(db, :name, Rihanna.Postgrex.Notifications)]}
+      # },
       {Task.Supervisor, name: Rihanna.JobSupervisor},
-      {Rihanna.JobManager, name: Rihanna.JobManager},
-      Rihanna.Producer
+      # {Rihanna.JobManager, name: Rihanna.JobManager},
+      # Rihanna.Producer
     ]
 
     Supervisor.init(children, strategy: :one_for_one)

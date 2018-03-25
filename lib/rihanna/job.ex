@@ -220,7 +220,7 @@ defmodule Rihanna.Job do
     Postgrex.query!(Rihanna.Postgrex, query, params)
   end
 
-  defp table() do
+  def table() do
     Rihanna.Config.jobs_table_name()
   end
 
