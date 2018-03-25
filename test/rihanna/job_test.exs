@@ -189,4 +189,25 @@ defmodule Rihanna.JobTest do
              } = mark_heartbeat(job_ids, DateTime.utc_now())
     end
   end
+
+  describe "mark_successful" do
+  end
+
+  describe "mark_failed/3" do
+    test "moves job into failed state and sets failed_at and reason", %{pg: pg} do
+      job = insert_job(pg, :in_progress)
+      now = DateTime.utc_now()
+      reason = "It went kaboom!"
+
+      mark_failed(job.id, now, reason)
+
+      updated_job = get_job_by_id(job.id)
+
+      assert updated_job.state == "failed"
+      assert updated_job.failed_at == now
+      assert updated_job.updated_at == now
+      assert updated_job.heartbeat_at == nil
+      assert updated_job.fail_reason == "It went kaboom!"
+    end
+  end
 end

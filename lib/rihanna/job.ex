@@ -192,7 +192,7 @@ defmodule Rihanna.Job do
           failed_at = $1,
           fail_reason = $2,
           heartbeat_at = NULL,
-          updated_at: $1
+          updated_at = $1
         WHERE
           id = $3
       """,
