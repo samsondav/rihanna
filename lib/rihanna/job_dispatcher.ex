@@ -34,7 +34,7 @@ defmodule Rihanna.JobDispatcher do # TODO: Is WorkerPool a better name?
     available_concurrency = @max_concurrency - Enum.count(working)
 
     working = Enum.reduce_while(1..available_concurrency, working, fn _, acc ->
-      case lock_one_job(pg, acc) do
+      case lock_one_job(pg) do
         nil ->
           {:halt, acc}
         job ->
@@ -59,7 +59,7 @@ defmodule Rihanna.JobDispatcher do # TODO: Is WorkerPool a better name?
     release_lock(pg, job.id)
 
     # Attempt to lock ONE new job to replace
-    working = case lock_one_job(pg, working) do
+    working = case lock_one_job(pg) do
       nil ->
         working
       job ->
@@ -79,7 +79,7 @@ defmodule Rihanna.JobDispatcher do # TODO: Is WorkerPool a better name?
 
 
     # Attempt to lock ONE new job to replace
-    working = case lock_one_job(pg, working) do
+    working = case lock_one_job(pg) do
       nil ->
         working
       job ->
@@ -105,8 +105,8 @@ defmodule Rihanna.JobDispatcher do # TODO: Is WorkerPool a better name?
     :ok
   end
 
-  defp lock_one_job(pg, working) do
-    case lock_n_jobs(pg, working, 1) do
+  defp lock_one_job(pg) do
+    case lock_n_jobs(pg, 1) do
       [job] ->
         job
       [] ->
@@ -114,34 +114,17 @@ defmodule Rihanna.JobDispatcher do # TODO: Is WorkerPool a better name?
     end
   end
 
-  defp lock_n_jobs(pg, working, n) do
-    {locks_already_held, job_ids} = working
-    |> Map.values
-    |> Enum.map(fn job -> job.id end)
-    |> Enum.with_index(2)
-    |> Enum.map(fn {job_id, idx} ->
-      {"$#{idx}", job_id}
-    end)
-    |> Enum.unzip()
-
-    locks_already_held = Enum.join(locks_already_held, ", ")
-
-  # locks_held_by_this_session AS (
-  #   SELECT objid AS id
-  #   FROM pg_locks pl
-  #   WHERE locktype = 'advisory'
-  #   AND pl.pid = pg_backend_pid()
-
-    # jobs_subselect = """
-
+  defp lock_n_jobs(pg, n) do
     lock_jobs = """
       WITH RECURSIVE jobs AS (
         SELECT (j).*, pg_try_advisory_lock((j).id) AS locked
         FROM (
           SELECT j
           FROM #{Rihanna.Job.table()} AS j
-          WHERE state = 'ready_to_run'
-          #{if Enum.any?(job_ids), do: "AND id NOT IN (#{locks_already_held})"}
+          LEFT OUTER JOIN locks_held_by_this_session lh
+          ON lh.id = j.id
+          WHERE lh.id IS NULL
+          AND state = 'ready_to_run'
           ORDER BY enqueued_at, j.id
           LIMIT 1
         ) AS t1
@@ -151,8 +134,10 @@ defmodule Rihanna.JobDispatcher do # TODO: Is WorkerPool a better name?
             SELECT (
               SELECT j
               FROM #{Rihanna.Job.table()} AS j
-              WHERE state = 'ready_to_run'
-              #{if Enum.any?(job_ids), do: "AND id NOT IN (#{locks_already_held})"}
+              LEFT OUTER JOIN locks_held_by_this_session lh
+              ON lh.id = j.id
+              WHERE lh.id IS NULL
+              AND state = 'ready_to_run'
               AND (j.enqueued_at, j.id) > (jobs.enqueued_at, jobs.id)
               ORDER BY enqueued_at, j.id
               LIMIT 1
@@ -162,6 +147,12 @@ defmodule Rihanna.JobDispatcher do # TODO: Is WorkerPool a better name?
             LIMIT 1
           ) AS t1
         )
+      ),
+      locks_held_by_this_session AS (
+        SELECT objid AS id
+        FROM pg_locks pl
+        WHERE locktype = 'advisory'
+        AND pl.pid = pg_backend_pid()
       )
       SELECT id, mfa, enqueued_at, updated_at, state, heartbeat_at, failed_at, fail_reason
       FROM jobs
@@ -172,7 +163,7 @@ defmodule Rihanna.JobDispatcher do # TODO: Is WorkerPool a better name?
     IO.puts lock_jobs
     IO.puts n
 
-    %{rows: rows} = Postgrex.query!(pg, lock_jobs, [n | job_ids])
+    %{rows: rows} = Postgrex.query!(pg, lock_jobs, [n])
 
     Rihanna.Job.from_sql(rows)
   end
