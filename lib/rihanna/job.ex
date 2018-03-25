@@ -68,6 +68,7 @@ defmodule Rihanna.Job do
       fail_reason: fail_reason
     }
   end
+  def from_sql([]), do: []
 
   def retry_failed(job_id) when is_binary(job_id) or is_integer(job_id) do
     now = DateTime.utc_now()
@@ -217,7 +218,7 @@ defmodule Rihanna.Job do
   end
 
   defp query!(query, params) do
-    Postgrex.query!(Rihanna.Postgrex, query, params)
+    Postgrex.query!(Rihanna.Job.Postgrex, query, params)
   end
 
   def table() do

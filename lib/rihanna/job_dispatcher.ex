@@ -7,11 +7,15 @@ defmodule Rihanna.JobDispatcher do # TODO: Is WorkerPool a better name?
   @poll_interval 10_000 # milliseconds
   @pg_advisory_class_id 42 # the class ID to which we "scope" our advisory locks
 
-  def start_link(opts) do
-    # TODO: It is important that a new pg session is started if the JobDispatcher dies since otherwise we will have dangling locks
-    pg = Rihanna.Postgrex # TODO: Make a new connection for each JobDispatcher
-    initial_state = %{working: %{}, pg: pg}
-    GenServer.start_link(__MODULE__, initial_state, opts)
+  def start_link(config, opts) do
+    # NOTE: It is important that a new pg session is started if the
+    # JobDispatcher dies since otherwise we may leave dangling locks in the zombie
+    # pg process
+    db = Keyword.get(config, :db)
+
+    {:ok, pg} = Postgrex.start_link(db)
+
+    GenServer.start_link(__MODULE__, %{working: %{}, pg: pg}, opts)
   end
 
   # state:
@@ -30,7 +34,7 @@ defmodule Rihanna.JobDispatcher do # TODO: Is WorkerPool a better name?
     available_concurrency = @max_concurrency - Enum.count(working)
 
     working = Enum.reduce_while(1..available_concurrency, working, fn _, acc ->
-      case lock_job(pg) do
+      case lock_one_job(pg, acc) do
         nil ->
           {:halt, acc}
         job ->
@@ -40,7 +44,7 @@ defmodule Rihanna.JobDispatcher do # TODO: Is WorkerPool a better name?
       end
     end)
 
-    IO.inspect working
+    Process.send_after(self(), :poll, @poll_interval)
 
     {:noreply, Map.put(state, :working, working)}
   end
@@ -51,16 +55,11 @@ defmodule Rihanna.JobDispatcher do # TODO: Is WorkerPool a better name?
     {job, working} = Map.pop(working, ref)
     IO.puts "Job #{job.id} completed successfully by #{inspect(ref)} with result: #{result}"
 
-    # Delete job
-    IO.puts "Pretending to delete job #{job.id}"
-
-    # Release lock
-    release_lock(Rihanna.Postgrex, job.id)
-
     Rihanna.Job.mark_successful(job.id)
+    release_lock(pg, job.id)
 
     # Attempt to lock ONE new job to replace
-    working = case lock_job(pg) do
+    working = case lock_one_job(pg, working) do
       nil ->
         working
       job ->
@@ -75,16 +74,12 @@ defmodule Rihanna.JobDispatcher do # TODO: Is WorkerPool a better name?
     {job, working} = Map.pop(working, ref)
     IO.puts "Job #{job.id} failed in #{inspect(ref)}!"
 
-    # Delete job
-    IO.puts "Pretending to mark job #{job.id} as failed"
+    Rihanna.Job.mark_failed(job.id, DateTime.utc_now(), Exception.format_exit(reason))
+    release_lock(pg, job.id)
 
-    # Release lock
-    release_lock(Rihanna.Postgrex, job.id)
-
-    Rihanna.Job.mark_failed(job.id, DateTime.utc_now(), reason)
 
     # Attempt to lock ONE new job to replace
-    working = case lock_job(pg) do
+    working = case lock_one_job(pg, working) do
       nil ->
         working
       job ->
@@ -96,7 +91,7 @@ defmodule Rihanna.JobDispatcher do # TODO: Is WorkerPool a better name?
   end
 
   def spawn_supervised_task(job) do
-    Task.Supervisor.async_nolink(Rihanna.JobSupervisor, fn ->
+    Task.Supervisor.async_nolink(Rihanna.TaskSupervisor, fn ->
       {mod, fun, args} = job.mfa
       apply(mod, fun, args)
     end)
@@ -104,24 +99,49 @@ defmodule Rihanna.JobDispatcher do # TODO: Is WorkerPool a better name?
 
   defp release_lock(pg, id) do
     %{rows: [[true]]} = Postgrex.query!(pg, """
-      SELECT pg_advisory_unlock($1)
+      SELECT pg_advisory_unlock($1);
     """, [id])
 
     :ok
   end
 
-  defp lock_job(pg) do
-    IO.inspect "lock_job"
-    sql = """
+  defp lock_one_job(pg, working) do
+    case lock_n_jobs(pg, working, 1) do
+      [job] ->
+        job
+      [] ->
+        nil
+    end
+  end
+
+  defp lock_n_jobs(pg, working, n) do
+    {locks_already_held, job_ids} = working
+    |> Map.values
+    |> Enum.map(fn job -> job.id end)
+    |> Enum.with_index(2)
+    |> Enum.map(fn {job_id, idx} ->
+      {"$#{idx}", job_id}
+    end)
+    |> Enum.unzip()
+
+    locks_already_held = Enum.join(locks_already_held, ", ")
+
+  # locks_held_by_this_session AS (
+  #   SELECT objid AS id
+  #   FROM pg_locks pl
+  #   WHERE locktype = 'advisory'
+  #   AND pl.pid = pg_backend_pid()
+
+    # jobs_subselect = """
+
+    lock_jobs = """
       WITH RECURSIVE jobs AS (
         SELECT (j).*, pg_try_advisory_lock((j).id) AS locked
         FROM (
           SELECT j
           FROM #{Rihanna.Job.table()} AS j
-          LEFT OUTER JOIN locks_held_by_this_session lh
-          ON lh.id = j.id
-          WHERE lh.id IS NULL
-          AND state = 'ready_to_run'
+          WHERE state = 'ready_to_run'
+          #{if Enum.any?(job_ids), do: "AND id NOT IN (#{locks_already_held})"}
           ORDER BY enqueued_at, j.id
           LIMIT 1
         ) AS t1
@@ -132,7 +152,9 @@ defmodule Rihanna.JobDispatcher do # TODO: Is WorkerPool a better name?
               SELECT j
               FROM #{Rihanna.Job.table()} AS j
               WHERE state = 'ready_to_run'
-              ORDER BY enqueued_at, id
+              #{if Enum.any?(job_ids), do: "AND id NOT IN (#{locks_already_held})"}
+              AND (j.enqueued_at, j.id) > (jobs.enqueued_at, jobs.id)
+              ORDER BY enqueued_at, j.id
               LIMIT 1
             ) AS j
             FROM jobs
@@ -140,23 +162,18 @@ defmodule Rihanna.JobDispatcher do # TODO: Is WorkerPool a better name?
             LIMIT 1
           ) AS t1
         )
-      ),
-      locks_held_by_this_session AS (
-        SELECT objid AS id
-        FROM pg_locks pl
-        WHERE locktype = 'advisory'
-        AND pl.pid = pg_backend_pid()
       )
       SELECT id, mfa, enqueued_at, updated_at, state, heartbeat_at, failed_at, fail_reason
       FROM jobs
       WHERE locked
-      LIMIT 1;
+      LIMIT $1;
     """
-    case Postgrex.query!(pg, sql, []) do
-      %{rows: [row]} ->
-        Rihanna.Job.from_sql(row)
-      %{rows: []} ->
-        nil
-    end
+
+    IO.puts lock_jobs
+    IO.puts n
+
+    %{rows: rows} = Postgrex.query!(pg, lock_jobs, [n | job_ids])
+
+    Rihanna.Job.from_sql(rows)
   end
 end
