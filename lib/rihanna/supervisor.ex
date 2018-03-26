@@ -13,18 +13,14 @@ defmodule Rihanna.Supervisor do
   def init({db, _config}) do
     children = [
       %{
-        id: Rihanna.Postgrex,
-        start: {Postgrex, :start_link, [Keyword.put(db, :name, Rihanna.Postgrex)]}
+        id: Rihanna.Job.Postgrex,
+        start: {Postgrex, :start_link, [Keyword.put(db, :name, Rihanna.Job.Postgrex)]}
       },
+      {Task.Supervisor, name: Rihanna.TaskSupervisor},
       %{
-        id: Rihanna.Postgrex.Notifications,
-        start:
-          {Postgrex.Notifications, :start_link,
-           [Keyword.put(db, :name, Rihanna.Postgrex.Notifications)]}
-      },
-      {Task.Supervisor, name: Rihanna.JobSupervisor},
-      {Rihanna.JobManager, name: Rihanna.JobManager},
-      Rihanna.Producer
+        id: Rihanna.JobDispatcher,
+        start: {Rihanna.JobDispatcher, :start_link, [[db: db], [name: Rihanna.JobDispatcher]]}
+      }
     ]
 
     Supervisor.init(children, strategy: :one_for_one)

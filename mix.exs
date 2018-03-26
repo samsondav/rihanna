@@ -22,7 +22,7 @@ defmodule Rihanna.MixProject do
     [
       {:postgrex, "~> 0.13.3"},
       {:ex_doc, ">= 0.0.0", only: :dev},
-      {:mix_test_watch, ">= 0.0.0", only: :dev}
+      # {:mix_test_watch, ">= 0.0.0", only: :dev}
     ]
   end
 

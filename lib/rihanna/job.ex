@@ -2,20 +2,13 @@ defmodule Rihanna.Job do
   require Logger
 
   @moduledoc """
-  Valid states are:
-    ready_to_run
-    in_progress
-    failed
-
+  Yea..... gonna write some
   """
 
   @fields [
     :id,
     :mfa,
     :enqueued_at,
-    :updated_at,
-    :state,
-    :heartbeat_at,
     :failed_at,
     :fail_reason
   ]
@@ -31,10 +24,11 @@ defmodule Rihanna.Job do
     now = DateTime.utc_now()
 
     %{rows: [job]} =
-      query!(
+      Postgrex.query!(
+        Rihanna.Job.Postgrex,
         """
-          INSERT INTO "#{table()}" (mfa, enqueued_at, updated_at, state)
-          VALUES ($1, $2, $2, 'ready_to_run')
+          INSERT INTO "#{table()}" (mfa, enqueued_at)
+          VALUES ($1, $2)
           RETURNING #{sql_fields()}
         """,
         [serialized_mfa, now]
@@ -51,9 +45,6 @@ defmodule Rihanna.Job do
         id,
         serialized_mfa,
         enqueued_at,
-        updated_at,
-        state,
-        heartbeat_at,
         failed_at,
         fail_reason
       ]) do
@@ -61,27 +52,26 @@ defmodule Rihanna.Job do
       id: id,
       mfa: :erlang.binary_to_term(serialized_mfa),
       enqueued_at: enqueued_at,
-      updated_at: updated_at,
-      state: state,
-      heartbeat_at: heartbeat_at,
       failed_at: failed_at,
       fail_reason: fail_reason
     }
   end
+  def from_sql([]), do: []
 
   def retry_failed(job_id) when is_binary(job_id) or is_integer(job_id) do
     now = DateTime.utc_now()
 
     result =
-      query!(
+      Postgrex.query!(
+        Rihanna.Job.Postgrex,
         """
           UPDATE "#{table()}"
           SET
-            state = 'ready_to_run',
-            updated_at = $1,
+            failed_at = NULL,
+            fail_reason = NULL,
             enqueued_at = $1
           WHERE
-            state = 'failed' AND id = $2
+            failed_at IS NOT NULL AND id = $2
         """,
         [now, job_id]
       )
@@ -95,132 +85,104 @@ defmodule Rihanna.Job do
     end
   end
 
-  def lock_for_running(job_id) when is_binary(job_id) or is_integer(job_id) do
-    now = DateTime.utc_now()
-
-    result =
-      query!(
-        """
-        UPDATE "#{table()}"
-        SET
-          state = 'in_progress',
-          heartbeat_at = $1,
-          updated_at = $1
-        WHERE
-          id = $2 AND state = 'ready_to_run'
-        RETURNING
-          #{sql_fields()}
-        """,
-        [now, job_id]
-      )
-
-    case result.num_rows do
-      1 ->
-        [job] = result.rows |> from_sql()
-        Logger.debug("Got lock for job #{job.id} in pid #{inspect(self())}")
-        {:ok, job}
-
-      0 ->
-        Logger.debug("Missed lock for job #{job_id} in pid #{inspect(self())}")
-        {:error, :missed_lock}
+  def lock(pg) do
+    case lock(pg, 1) do
+      [job] ->
+        job
+      [] ->
+        nil
     end
   end
 
-  def ready_to_run_ids() do
-    query!(
-      """
-      SELECT id FROM "#{table()}"
-      WHERE state = 'ready_to_run'
-      """,
-      []
-    )
-    |> Map.fetch!(:rows)
-    |> Enum.map(fn [id] when is_integer(id) -> id end)
-  end
-
-  def mark_heartbeat(job_ids, now) do
-    {query_params, job_ids} =
-      job_ids
-      |> Enum.with_index(2)
-      |> Enum.map(fn {job_id, idx} ->
-        {"$#{idx}", job_id}
-      end)
-      |> Enum.unzip()
-
-    %{rows: rows} =
-      query!(
-        """
-          UPDATE "#{table()}"
-          SET
-            heartbeat_at = $1,
-            updated_at = $1
-          WHERE
-            id IN (#{Enum.join(query_params, ", ")})
-              AND
-            state = 'in_progress'
-          RETURNING id
-        """,
-        [now | job_ids]
+  # TODO: Write some documentation for this monster
+  def lock(pg, n) do
+    lock_jobs = """
+      WITH RECURSIVE jobs AS (
+        SELECT (j).*, pg_try_advisory_lock((j).id) AS locked
+        FROM (
+          SELECT j
+          FROM #{table()} AS j
+          LEFT OUTER JOIN locks_held_by_this_session lh
+          ON lh.id = j.id
+          WHERE lh.id IS NULL
+          AND failed_at IS NULL
+          ORDER BY enqueued_at, j.id
+          FOR UPDATE SKIP LOCKED
+          LIMIT 1
+        ) AS t1
+        UNION ALL (
+          SELECT (j).*, pg_try_advisory_lock((j).id) AS locked
+          FROM (
+            SELECT (
+              SELECT j
+              FROM #{table()} AS j
+              LEFT OUTER JOIN locks_held_by_this_session lh
+              ON lh.id = j.id
+              WHERE lh.id IS NULL
+              AND failed_at IS NULL
+              AND (j.enqueued_at, j.id) > (jobs.enqueued_at, jobs.id)
+              ORDER BY enqueued_at, j.id
+              FOR UPDATE SKIP LOCKED
+              LIMIT 1
+            ) AS j
+            FROM jobs
+            WHERE jobs.id IS NOT NULL
+            LIMIT 1
+          ) AS t1
+        )
+      ),
+      locks_held_by_this_session AS (
+        SELECT objid AS id
+        FROM pg_locks pl
+        WHERE locktype = 'advisory'
+        AND pl.pid = pg_backend_pid()
       )
+      SELECT id, mfa, enqueued_at, failed_at, fail_reason
+      FROM jobs
+      WHERE locked
+      LIMIT $1;
+    """
 
-    alive_job_ids = for [id] <- rows, do: id
+    %{rows: rows} = Postgrex.query!(pg, lock_jobs, [n])
 
-    %{
-      alive: alive_job_ids,
-      gone: job_ids -- alive_job_ids
-    }
+    Rihanna.Job.from_sql(rows)
   end
 
-  # MARK: test from here down
-
-  def mark_successful(job_id) do
-    query!(
+  def mark_successful(pg, job_id) do
+    Postgrex.query!(
+      pg,
       """
         DELETE FROM "#{table()}"
-        WHERE id = $1
+        WHERE id = $1;
       """,
       [job_id]
     )
+    release_lock(pg, job_id)
   end
 
-  def mark_failed(job_id, now, fail_reason) do
-    query!(
+  def mark_failed(pg, job_id, now, fail_reason) do
+    Postgrex.query!(
+      pg,
       """
         UPDATE "#{table()}"
         SET
-          state = 'failed',
           failed_at = $1,
-          fail_reason = $2,
-          heartbeat_at = NULL,
-          updated_at: $1
+          fail_reason = $2
         WHERE
           id = $3
       """,
       [now, fail_reason, job_id]
     )
+    release_lock(pg, job_id)
   end
 
-  def sweep_for_expired(now, assume_dead) do
-    query!(
-      """
-      UPDATE "#{table()}"
-      SET
-        state = "failed",
-        heartbeat_at = NULL,
-        failed_at = $1,
-        fail_reason = 'Unknown: worker went AWOL'
-      WHERE
-        state = 'in_progress' AND j.heartbeat_at <= $2
-      """,
-      [now, assume_dead]
-    )
+  defp release_lock(pg, job_id) do
+    %{rows: [[true]]} = Postgrex.query!(pg, """
+      SELECT pg_advisory_unlock($1);
+    """, [job_id])
   end
 
-  defp query!(query, params) do
-    Postgrex.query!(Rihanna.Postgrex, query, params)
-  end
-
-  defp table() do
+  def table() do
     Rihanna.Config.jobs_table_name()
   end
 
