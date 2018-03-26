@@ -172,16 +172,21 @@ defmodule Rihanna.Job do
     }
   end
 
-  # MARK: test from here down
-
-  def mark_successful(job_id) do
-    query!(
+  def mark_successful(pg, job_id) do
+    Postgrex.query!(
+      pg,
       """
         DELETE FROM "#{table()}"
         WHERE id = $1
       """,
       [job_id]
     )
+  end
+
+  def release_lock(pg, job_id) do
+    %{rows: [[true]]} = Postgrex.query!(pg, """
+      SELECT pg_advisory_unlock($1);
+    """, [job_id])
   end
 
   def mark_failed(job_id, now, fail_reason) do

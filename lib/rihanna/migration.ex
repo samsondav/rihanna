@@ -1,73 +1,60 @@
 defmodule Rihanna.Migration do
-  defmacro change(table_name \\ "rihanna_jobs") do
+  @default_table_name "rihanna_jobs"
+
+  defmacro up(table_name \\ @default_table_name) do
     quote do
-      # FIXME: NEEDS an index on the job lookup condition!
-
-      create table(unquote(table_name)) do
-        add(:mfa, :bytea, null: false)
-        timestamps(type: :timestamptz, inserted_at: :enqueued_at)
-        add(:state, :string, null: false, default: "ready_to_run")
-        add(:heartbeat_at, :timestamptz)
-        add(:failed_at, :timestamptz)
-        add(:fail_reason, :text)
-      end
-
-      create(
-        constraint(
-          unquote(table_name),
-          "state_value_is_valid",
-          check: ~s|state IN ('failed', 'ready_to_run', 'in_progress')|,
-          comment: ~s(Valid states are 'ready_to_run', 'in_progress' or 'failed')
-        )
-      )
-
-      create(
-        constraint(
-          unquote(table_name),
-          "failures_must_set_failed_at_and_fail_reason",
-          check:
-            ~s|(state = 'failed' AND failed_at IS NOT NULL AND fail_reason IS NOT NULL) OR state != 'failed'|,
-          comment: ~s(When marking a job as 'failed', you must set failed_at and fail_reason)
-        )
-      )
-
-      create(
-        constraint(
-          unquote(table_name),
-          "only_in_progress_must_set_heartbeat_at",
-          check: ~s|heartbeat_at IS NULL OR (state = 'in_progress' AND heartbeat_at IS NOT NULL)|,
-          comment:
-            ~s(If job state is 'in_progress', heartbeat_at must be set. Otherwise it must be NULL.)
-        )
-      )
-
-      execute(
-        """
-          CREATE FUNCTION fn_notify_insert_job()
-            RETURNS trigger AS $$
-          DECLARE
-          BEGIN
-            PERFORM pg_notify(
-              'insert_job',
-              NEW.id
-            );
-            RETURN NEW;
-          END;
-          $$ LANGUAGE plpgsql
-        """,
-        "DROP FUNCTION IF EXISTS fn_notify_insert_job()"
-      )
-
-      execute(
-        """
-          CREATE TRIGGER trg_notify_insert_job
-          AFTER INSERT
-          ON #{unquote(table_name)}
-          FOR EACH ROW
-          EXECUTE PROCEDURE fn_notify_insert_job();
-        """,
-        "DROP TRIGGER trg_notify_insert_job ON #{unquote(table_name)} CASCADE"
-      )
+      Enum.each(statements(unquote(table_name)), fn ->
+        execute(statement)
+      end)
     end
+  end
+
+  defmacro down(table_name \\ @default_table_name) do
+    quote do
+      execute """
+      DROP TABLE(#{unquote(table_name)});
+      """
+    end
+  end
+
+  def statements(table_name \\ @default_table_name) do
+    [
+      """
+      CREATE TABLE #{table_name} (
+        id int NOT NULL,
+        mfa bytea NOT NULL,
+        enqueued_at timestamp with time zone NOT NULL,
+        updated_at timestamp with time zone NOT NULL,
+        failed_at timestamp with time zone,
+        fail_reason text,
+        CONSTRAINT failed_at_required_fail_reason CHECK((failed_at IS NOT NULL AND fail_reason IS NOT NULL) OR (failed_at IS NULL and fail_reason IS NULL))
+      );
+      """,
+      """
+      COMMENT ON CONSTRAINT failed_at_required_fail_reason ON #{table_name} IS 'When setting failed_at you must also set a fail_reason';
+      """,
+      """
+      CREATE SEQUENCE #{table_name}_id_seq
+      START WITH 1
+      INCREMENT BY 1
+      NO MINVALUE
+      NO MAXVALUE
+      CACHE 1;
+      """,
+      """
+      ALTER SEQUENCE #{table_name}_id_seq OWNED BY rihanna_jobs.id;
+      """,
+      """
+      ALTER TABLE ONLY #{table_name} ALTER COLUMN id SET DEFAULT nextval('#{table_name}_id_seq'::regclass);
+      """,
+      """
+      ALTER TABLE ONLY public.rihanna_jobs
+      ADD CONSTRAINT rihanna_jobs_pkey PRIMARY KEY (id);
+      """
+    ]
+  end
+
+  def raw_sql(table_name \\ @default_table_name) do
+    Enum.join(statements(table_name), "\n")
   end
 end

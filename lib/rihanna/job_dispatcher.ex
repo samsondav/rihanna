@@ -43,7 +43,7 @@ defmodule Timer do
       IO.puts "DONE in #{:timer.now_diff(now, start) / 1000}ms"
       state = Map.put(state, :reported, true)
     end
-    Process.send_after(self(), :poll, 100)
+    Process.send_after(self(), :poll, 100 + (:rand.uniform(50) - 25))
 
     {:noreply, state}
   end
@@ -53,8 +53,7 @@ defmodule Rihanna.JobDispatcher do # TODO: Is WorkerPool a better name?
   use GenServer
   require Logger
 
-  @max_concurrency 25 # maximum number of simultaneously executing tasks for this dispatcher
-  # @poll_interval 100 # milliseconds
+  @max_concurrency 50 # maximum number of simultaneously executing tasks for this dispatcher
   @poll_interval 100 # milliseconds
   @pg_advisory_class_id 42 # the class ID to which we "scope" our advisory locks
 
@@ -69,12 +68,6 @@ defmodule Rihanna.JobDispatcher do # TODO: Is WorkerPool a better name?
     GenServer.start_link(__MODULE__, %{working: %{}, pg: pg}, opts)
   end
 
-  # state:
-  # %{
-  #     ref => task1,
-  #     ref => task2,
-  # }
-  #
   def init(state) do
     Process.send(self(), :poll, [])
     {:ok, state}
@@ -93,26 +86,6 @@ defmodule Rihanna.JobDispatcher do # TODO: Is WorkerPool a better name?
       end
     end
 
-    if Enum.any?(jobs) do
-      # Logger.debug("Spawned #{length(jobs)} in #{us / 1000}ms")
-    end
-
-    # if Enum.any?(working) do
-    #   # IO.puts("TOOK:  to spawn tasks")
-    # end
-    #     working = Enum.reduce_while(1..available_concurrency, working, fn _, acc ->
-    #   case lock_one_job(pg, acc) do
-    #     nil ->
-    #       {:halt, acc}
-    #     job ->
-    #       postgrex_connection_id = Postgrex.query!(pg, "SELECT 1",[]).connection_id
-    #       IO.puts "#{self() |> inspect} locked #{job.id} - pg pid was #{inspect pg}, connection_id #{postgrex_connection_id}"
-    #       task = spawn_supervised_task(job)
-    #       Process.send(elem(job.mfa, 2) |> hd, {self(), job.id}, [])
-    #       {:cont, Map.put(acc, task.ref, job)}
-    #   end
-    # end)
-
     Process.send_after(self(), :poll, @poll_interval + :rand.uniform(50))
 
     {:noreply, Map.put(state, :working, working)}
@@ -121,25 +94,10 @@ defmodule Rihanna.JobDispatcher do # TODO: Is WorkerPool a better name?
   def handle_info({ref, result}, state = %{pg: pg, working: working}) do
     Process.demonitor(ref, [:flush]) # Flush guarantees that DOWN message will be received before demonitoring
 
-    # Logger.debug "#{inspect(ref)} yielded #{result}"
-
     {job, working} = Map.pop(working, ref)
 
-    # IO.puts "Job #{job.id} completed successfully by #{inspect(ref)} with result: #{result}"
-
-    # Rihanna.Job.mark_successful(job.id)
-    Postgrex.query!(pg, "DELETE FROM rihanna_jobs WHERE id = $1", [job.id])
-    release_lock(pg, job.id)
-
-
-    # Attempt to lock ONE new job to replace
-    # working = case lock_one_job(pg) do
-    #   nil ->
-    #     working
-    #   job ->
-    #     task = spawn_supervised_task(job)
-    #     Map.put(working, task.ref, job)
-    # end
+    Rihanna.Job.mark_successful(pg, job.id)
+    Rihanna.Job.release_lock(pg, job.id)
 
     state = Map.put(state, :working, working)
 
@@ -170,14 +128,6 @@ defmodule Rihanna.JobDispatcher do # TODO: Is WorkerPool a better name?
       {mod, fun, args} = job.mfa
       apply(mod, fun, args)
     end)
-  end
-
-  defp release_lock(pg, id) do
-    %{rows: [[true]]} = Postgrex.query!(pg, """
-      SELECT pg_advisory_unlock($1);
-    """, [id])
-
-    :ok
   end
 
   defp lock_one_job(pg) do
