@@ -2,8 +2,10 @@ defmodule Rihanna.JobDispatcher do
   use GenServer
   require Logger
 
-  @max_concurrency 50 # maximum number of simultaneously executing tasks for this dispatcher
-  @poll_interval 100 # milliseconds
+  # maximum number of simultaneously executing tasks for this dispatcher
+  @max_concurrency 50
+  # milliseconds
+  @poll_interval 100
 
   def start_link(config, opts) do
     # NOTE: It is important that a new pg session is started if the
@@ -27,10 +29,11 @@ defmodule Rihanna.JobDispatcher do
 
     jobs = Rihanna.Job.lock(pg, available_concurrency)
 
-    working = for job <- jobs, into: working do
-      task = spawn_supervised_task(job)
-      {task.ref, job}
-    end
+    working =
+      for job <- jobs, into: working do
+        task = spawn_supervised_task(job)
+        {task.ref, job}
+      end
 
     state = Map.put(state, :working, working)
 
@@ -40,7 +43,8 @@ defmodule Rihanna.JobDispatcher do
   end
 
   def handle_info({ref, result}, state = %{pg: pg, working: working}) do
-    Process.demonitor(ref, [:flush]) # Flush guarantees that DOWN message will be received before demonitoring
+    # Flush guarantees that DOWN message will be received before demonitoring
+    Process.demonitor(ref, [:flush])
 
     {job, working} = Map.pop(working, ref)
 

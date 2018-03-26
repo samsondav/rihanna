@@ -56,6 +56,7 @@ defmodule Rihanna.Job do
       fail_reason: fail_reason
     }
   end
+
   def from_sql([]), do: []
 
   def retry_failed(job_id) when is_binary(job_id) or is_integer(job_id) do
@@ -89,6 +90,7 @@ defmodule Rihanna.Job do
     case lock(pg, 1) do
       [job] ->
         job
+
       [] ->
         nil
     end
@@ -157,6 +159,7 @@ defmodule Rihanna.Job do
       """,
       [job_id]
     )
+
     release_lock(pg, job_id)
   end
 
@@ -173,13 +176,19 @@ defmodule Rihanna.Job do
       """,
       [now, fail_reason, job_id]
     )
+
     release_lock(pg, job_id)
   end
 
   defp release_lock(pg, job_id) do
-    %{rows: [[true]]} = Postgrex.query!(pg, """
-      SELECT pg_advisory_unlock($1);
-    """, [job_id])
+    %{rows: [[true]]} =
+      Postgrex.query!(
+        pg,
+        """
+          SELECT pg_advisory_unlock($1);
+        """,
+        [job_id]
+      )
   end
 
   def table() do

@@ -11,9 +11,9 @@ defmodule Rihanna.Migration do
 
   defmacro down(table_name \\ @default_table_name) do
     quote do
-      execute """
+      execute("""
       DROP TABLE(#{unquote(table_name)});
-      """
+      """)
     end
   end
 
