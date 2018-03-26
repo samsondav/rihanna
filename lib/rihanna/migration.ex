@@ -1,6 +1,8 @@
 defmodule Rihanna.Migration do
   @default_table_name Rihanna.Config.jobs_table_name()
 
+  #  TODO: __using__ for ecto
+
   defmacro up(table_name \\ @default_table_name) do
     quote do
       Enum.each(statements(unquote(table_name)), fn ->
@@ -41,14 +43,14 @@ defmodule Rihanna.Migration do
       CACHE 1;
       """,
       """
-      ALTER SEQUENCE #{table_name}_id_seq OWNED BY rihanna_jobs.id;
+      ALTER SEQUENCE #{table_name}_id_seq OWNED BY #{table_name}.id;
       """,
       """
       ALTER TABLE ONLY #{table_name} ALTER COLUMN id SET DEFAULT nextval('#{table_name}_id_seq'::regclass);
       """,
       """
-      ALTER TABLE ONLY public.rihanna_jobs
-      ADD CONSTRAINT rihanna_jobs_pkey PRIMARY KEY (id);
+      ALTER TABLE ONLY #{table_name}
+      ADD CONSTRAINT #{table_name}_pkey PRIMARY KEY (id);
       """
     ]
   end
