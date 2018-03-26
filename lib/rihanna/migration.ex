@@ -1,5 +1,5 @@
 defmodule Rihanna.Migration do
-  @default_table_name "rihanna_jobs"
+  @default_table_name Rihanna.Config.jobs_table_name()
 
   defmacro up(table_name \\ @default_table_name) do
     quote do
@@ -21,10 +21,9 @@ defmodule Rihanna.Migration do
     [
       """
       CREATE TABLE #{table_name} (
-        id int NOT NULL,
+        id bigint NOT NULL,
         mfa bytea NOT NULL,
         enqueued_at timestamp with time zone NOT NULL,
-        updated_at timestamp with time zone NOT NULL,
         failed_at timestamp with time zone,
         fail_reason text,
         CONSTRAINT failed_at_required_fail_reason CHECK((failed_at IS NOT NULL AND fail_reason IS NOT NULL) OR (failed_at IS NULL and fail_reason IS NULL))
