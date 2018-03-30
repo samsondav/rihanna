@@ -10,6 +10,15 @@ defmodule RihannaTest do
   @mfa {IO, :puts, ["Work, work, work, work, work."]}
 
   describe "enqueue/1" do
+    setup do
+      {:ok, _} = Postgrex.start_link(Keyword.put(
+        Application.fetch_env!(:rihanna, :postgrex),
+        :name,
+        Rihanna.Postgrex
+      ))
+      :ok
+    end
+
     test "returns the job struct" do
       {:ok, job} = Rihanna.enqueue(@mfa)
 
@@ -17,25 +26,19 @@ defmodule RihannaTest do
       assert %DateTime{} = job.enqueued_at
       assert job.fail_reason |> is_nil
       assert job.failed_at |> is_nil
-      assert job.heartbeat_at |> is_nil
       assert job.mfa == @mfa
-      assert job.state == "ready_to_run"
-      assert %DateTime{} = job.updated_at
     end
 
-    test "inserts the job to the DB" do
+    test "inserts the job to the DB", %{pg: pg} do
       {:ok, job} = Rihanna.enqueue(@mfa)
 
-      job = get_job_by_id(job.id)
+      job = get_job_by_id(pg, job.id)
 
       assert %Rihanna.Job{} = job
       assert %DateTime{} = job.enqueued_at
       assert job.fail_reason |> is_nil
       assert job.failed_at |> is_nil
-      assert job.heartbeat_at |> is_nil
       assert job.mfa == @mfa
-      assert job.state == "ready_to_run"
-      assert %DateTime{} = job.updated_at
     end
 
     test "shows helpful error for invalid argument" do

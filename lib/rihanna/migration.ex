@@ -55,7 +55,7 @@ defmodule Rihanna.Migration do
     ]
   end
 
-  def raw_sql(table_name \\ @default_table_name) do
+  def sql(table_name \\ @default_table_name) do
     Enum.join(statements(table_name), "\n")
   end
 end

@@ -59,7 +59,7 @@ defmodule Rihanna.Job do
 
   def from_sql([]), do: []
 
-  def retry_failed(job_id) when is_binary(job_id) or is_integer(job_id) do
+  def retry_failed(pg \\ Rihanna.Job.Postgrex, job_id) when is_binary(job_id) or is_integer(job_id) do
     now = DateTime.utc_now()
 
     result =
@@ -86,7 +86,7 @@ defmodule Rihanna.Job do
     end
   end
 
-  def lock(pg) do
+  def lock(pg) when is_pid(pg) do
     case lock(pg, 1) do
       [job] ->
         job
@@ -97,7 +97,7 @@ defmodule Rihanna.Job do
   end
 
   # TODO: Write some documentation for this monster
-  def lock(pg, n) do
+  def lock(pg, n) when is_pid(pg) and is_integer(n) and n > 0 do
     lock_jobs = """
       WITH RECURSIVE jobs AS (
         SELECT (j).*, pg_try_advisory_lock((j).id) AS locked
