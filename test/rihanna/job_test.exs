@@ -8,7 +8,9 @@ defmodule Rihanna.JobTest do
   setup %{pg: pg} do
     Postgrex.query!(pg, "DELETE FROM rihanna_jobs;", [])
     job = insert_job(pg, :ready_to_run)
-    {:ok, %{job: job}}
+    {:ok, pg2} = Postgrex.start_link(Application.fetch_env!(:rihanna, :postgrex))
+
+    {:ok, %{job: job, pg2: pg2}}
   end
 
   describe "retry_failed/1 when job has failed" do
@@ -55,15 +57,6 @@ defmodule Rihanna.JobTest do
   end
 
   describe "lock/1 when job is ready to run" do
-    setup %{pg: pg} do
-      # Reset the locks before each test
-      %{rows: [[:void]]} = Postgrex.query!(pg, "SELECT pg_advisory_unlock_all()", [])
-
-      {:ok, pg2} = Postgrex.start_link(Application.fetch_env!(:rihanna, :postgrex))
-
-      {:ok, %{pg2: pg2}}
-    end
-
     test "returns job", %{job: %{id: id}, pg: pg} do
       assert %Rihanna.Job{id: ^id} = lock(pg)
     end
@@ -82,13 +75,51 @@ defmodule Rihanna.JobTest do
   end
 
   describe "lock/2" do
-    test "locks multiple jobs" do
+    setup %{pg: pg, job: job} do
+      jobs = [job] ++ [
+        insert_job(pg, :ready_to_run),
+        insert_job(pg, :ready_to_run)
+      ]
+      {:ok, %{jobs: jobs}}
     end
 
-    test "skips jobs that are locked by another session" do
+    test "locks all available jobs if N is greater", %{pg: pg, jobs: jobs} do
+      locked = lock(pg, 4)
+
+      assert locked == jobs
+      assert length(locked) == 3
     end
 
-    test "skips jobs that are already locked by this session" do
+    test "locks all available jobs if equal to` N", %{pg: pg, jobs: jobs} do
+      locked = lock(pg, 3)
+
+      assert locked == jobs
+      assert length(locked) == 3
+    end
+
+    test "locks N jobs if less than the number avaialable", %{pg: pg, jobs: jobs} do
+      locked = lock(pg, 2)
+      locked_set = locked |> MapSet.new
+      jobs_set = jobs |> MapSet.new
+
+      assert MapSet.subset?(locked_set, jobs_set)
+      assert length(locked) == 2
+    end
+
+    test "skips jobs that are locked by another session", %{job: job, pg: pg, pg2: pg2} do
+      %{rows: [[true]]} = Postgrex.query!(pg2, "SELECT pg_try_advisory_lock($1)", [job.id])
+
+      locked = lock(pg, 3)
+      assert length(locked) == 2
+      refute Enum.any?(locked, fn %{id: id} -> id == job.id end)
+    end
+
+    test "skips jobs that are already locked by this session", %{job: job, pg: pg} do
+      %{rows: [[true]]} = Postgrex.query!(pg, "SELECT pg_try_advisory_lock($1)", [job.id])
+
+      locked = lock(pg, 3)
+      assert length(locked) == 2
+      refute Enum.any?(locked, fn %{id: id} -> id == job.id end)
     end
   end
 

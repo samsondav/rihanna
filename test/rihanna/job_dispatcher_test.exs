@@ -4,6 +4,8 @@ defmodule Rihanna.JobDispatcherTest do
 
   setup_all :create_jobs_table
 
+  # TODO: Write these tests
+
   # describe "handle_call/3" do
   #   setup do
   #     {:ok, %{js: Task.Supervisor.start_link(name: Rihanna.JobSupervisor)}}
