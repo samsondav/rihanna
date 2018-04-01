@@ -1,14 +1,13 @@
 # Rihanna
 
-Rihanna is a fast, reliable and easy-to-use Postgres-backed distributed job queue for Elixir. It was inspired by the brilliant [Que](https://github.com/chanks/que) library for Ruby and like Que it also uses advisory locks for speed.
+Rihanna is a fast, reliable and easy-to-use Postgres-backed distributed job queue for Elixir. It was inspired by the brilliant [Que](https://github.com/chanks/que) library for Ruby and uses advisory locks for speed.
 
 You might consider using Rihanna if:
 
 - You need durable asynchronous jobs that are guaranteed to run even if the BEAM is restarted
 - You want a [beautiful web GUI](https://github.com/samphilipd/rihanna_ui) that allows you to inspect, delete and retry failed jobs
-- You want a simple queue that uses your existing Postges database and doesn't require any additional services
-- You need to process up to 1000 jobs per second (if you need more throughout than this you should probably skip Redis and consider a "real" messaging system like Kafka or ActiveMQ)
-- You are using stateless nodes
+- You want a simple queue that uses your existing Postges database and doesn't require any additional services or dependencies
+- You need to process less than about 1000 jobs per second (if you need more throughout than this you should probably skip Redis and consider a "real" messaging system like Kafka or ActiveMQ)
 - You want to pass in arbitrary Elixir/Erlang terms that may not be JSON-serializable such as tuples or structs into your async function calls
 
 
@@ -30,6 +29,8 @@ end
 
 Rihanna stores jobs in a table in your database. The default table name is "rihanna_jobs".
 
+#### Using Ecto
+
 Run `mix ecto.gen.migration create_rihanna_jobs` and make your migration look like this:
 
 ```elixir
@@ -40,7 +41,9 @@ end
 
 Now you can run `mix ecto.migrate`.
 
-NOTE: Ecto is not required to run Rihanna. If you want to create the table yourself, without Ecto, take a look at [Rihanna.Migration](insert_link_to_docs_here).
+#### Without Ecto
+
+Ecto is not required to run Rihanna. If you want to create the table yourself, without Ecto, take a look at the docs for [Rihanna.Migration](insert_link_to_docs_here).
 
 4. Add `Rihanna.Supervisor` to your supervision tree
 
@@ -83,7 +86,7 @@ Q. How many jobs per second can Rihanna process?
 
 Performance is at least as good as [Que](https://github.com/chanks/que).
 
-At least 1.5k jobs per second is possible on a mid-2016 Macbook Pro. Significantly higher throughputs are possible with a beefier database server.
+I have seen it do around 1.5k jobs per second on a mid-2016 Macbook Pro. Significantly higher throughputs are possible with a beefier database server.
 
 More detailed benchmarks to come. For now see: [https://github.com/chanks/queue-shootout](https://github.com/chanks/queue-shootout).
 
