@@ -12,6 +12,7 @@ defmodule Rihanna.Job do
     :failed_at,
     :fail_reason
   ]
+  @class_id Rihanna.Config.pg_advisory_lock_class_id()
 
   defstruct @fields
 
@@ -60,12 +61,12 @@ defmodule Rihanna.Job do
   def from_sql([]), do: []
 
   def retry_failed(pg \\ Rihanna.Job.Postgrex, job_id)
-      when is_binary(job_id) or is_integer(job_id) do
+      when is_pid(pg) and is_binary(job_id) or is_integer(job_id) do
     now = DateTime.utc_now()
 
     result =
       Postgrex.query!(
-        Rihanna.Job.Postgrex,
+        pg,
         """
           UPDATE "#{table()}"
           SET
@@ -101,7 +102,7 @@ defmodule Rihanna.Job do
   def lock(pg, n) when is_pid(pg) and is_integer(n) and n > 0 do
     lock_jobs = """
       WITH RECURSIVE jobs AS (
-        SELECT (j).*, pg_try_advisory_lock((j).id) AS locked
+        SELECT (j).*, pg_try_advisory_lock(#{@class_id}, (j).id) AS locked
         FROM (
           SELECT j
           FROM #{table()} AS j
@@ -114,7 +115,7 @@ defmodule Rihanna.Job do
           LIMIT 1
         ) AS t1
         UNION ALL (
-          SELECT (j).*, pg_try_advisory_lock((j).id) AS locked
+          SELECT (j).*, pg_try_advisory_lock(#{@class_id}, (j).id) AS locked
           FROM (
             SELECT (
               SELECT j
@@ -138,6 +139,7 @@ defmodule Rihanna.Job do
         SELECT objid AS id
         FROM pg_locks pl
         WHERE locktype = 'advisory'
+        AND classid = #{@class_id}
         AND pl.pid = pg_backend_pid()
       )
       SELECT id, mfa, enqueued_at, failed_at, fail_reason
@@ -189,7 +191,7 @@ defmodule Rihanna.Job do
       Postgrex.query!(
         pg,
         """
-          SELECT pg_advisory_unlock($1);
+          SELECT pg_advisory_unlock(#{@class_id}, $1);
         """,
         [job_id]
       )

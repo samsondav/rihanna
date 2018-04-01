@@ -3,6 +3,8 @@ defmodule Rihanna.JobTest do
   import Rihanna.Job
   import TestHelper
 
+  @class_id Rihanna.Config.pg_advisory_lock_class_id()
+
   setup_all [:create_jobs_table]
 
   setup %{pg: pg} do
@@ -64,7 +66,7 @@ defmodule Rihanna.JobTest do
     test "takes advisory lock on first available job", %{job: %{id: id}, pg: pg, pg2: pg2} do
       assert %Rihanna.Job{id: ^id} = lock(pg)
 
-      assert %{rows: [[false]]} = Postgrex.query!(pg2, "SELECT pg_try_advisory_lock($1)", [id])
+      assert %{rows: [[false]]} = Postgrex.query!(pg2, "SELECT pg_try_advisory_lock(#{@class_id}, $1)", [id])
     end
 
     test "does not lock job if advisory lock is already taken", %{
@@ -72,7 +74,7 @@ defmodule Rihanna.JobTest do
       pg: pg,
       pg2: pg2
     } do
-      assert %{rows: [[true]]} = Postgrex.query!(pg2, "SELECT pg_try_advisory_lock($1)", [id])
+      assert %{rows: [[true]]} = Postgrex.query!(pg2, "SELECT pg_try_advisory_lock(#{@class_id}, $1)", [id])
 
       assert lock(pg) |> is_nil
     end
@@ -114,7 +116,7 @@ defmodule Rihanna.JobTest do
     end
 
     test "skips jobs that are locked by another session", %{job: job, pg: pg, pg2: pg2} do
-      %{rows: [[true]]} = Postgrex.query!(pg2, "SELECT pg_try_advisory_lock($1)", [job.id])
+      %{rows: [[true]]} = Postgrex.query!(pg2, "SELECT pg_try_advisory_lock(#{@class_id}, $1)", [job.id])
 
       locked = lock(pg, 3)
       assert length(locked) == 2
@@ -122,7 +124,7 @@ defmodule Rihanna.JobTest do
     end
 
     test "skips jobs that are already locked by this session", %{job: job, pg: pg} do
-      %{rows: [[true]]} = Postgrex.query!(pg, "SELECT pg_try_advisory_lock($1)", [job.id])
+      %{rows: [[true]]} = Postgrex.query!(pg, "SELECT pg_try_advisory_lock(#{@class_id}, $1)", [job.id])
 
       locked = lock(pg, 3)
       assert length(locked) == 2
@@ -132,7 +134,7 @@ defmodule Rihanna.JobTest do
 
   describe "mark_successful" do
     setup %{pg: pg, job: %{id: id}} do
-      %{num_rows: 1} = Postgrex.query!(pg, "SELECT pg_advisory_lock($1)", [id])
+      %{num_rows: 1} = Postgrex.query!(pg, "SELECT pg_advisory_lock(#{@class_id}, $1)", [id])
       :ok
     end
 
@@ -151,6 +153,7 @@ defmodule Rihanna.JobTest do
             FROM pg_locks pl
             WHERE locktype = 'advisory'
             AND pl.pid = pg_backend_pid()
+            AND classid = #{@class_id}
             AND objid = $1
           """,
           [job.id]
@@ -166,6 +169,7 @@ defmodule Rihanna.JobTest do
                    FROM pg_locks pl
                    WHERE locktype = 'advisory'
                    AND pl.pid = pg_backend_pid()
+                   AND classid = #{@class_id}
                    AND objid = $1
                  """,
                  [job.id]
@@ -189,7 +193,7 @@ defmodule Rihanna.JobTest do
   describe "mark_failed/3" do
     test "sets failed_at and reason", %{pg: pg} do
       job = insert_job(pg, :ready_to_run)
-      %{rows: [[true]]} = Postgrex.query!(pg, "SELECT pg_try_advisory_lock($1)", [job.id])
+      %{rows: [[true]]} = Postgrex.query!(pg, "SELECT pg_try_advisory_lock(#{@class_id}, $1)", [job.id])
 
       now = DateTime.utc_now()
       reason = "It went kaboom!"
