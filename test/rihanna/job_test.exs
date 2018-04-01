@@ -67,7 +67,11 @@ defmodule Rihanna.JobTest do
       assert %{rows: [[false]]} = Postgrex.query!(pg2, "SELECT pg_try_advisory_lock($1)", [id])
     end
 
-    test "does not lock job if advisory lock is already taken", %{job: %{id: id}, pg: pg, pg2: pg2} do
+    test "does not lock job if advisory lock is already taken", %{
+      job: %{id: id},
+      pg: pg,
+      pg2: pg2
+    } do
       assert %{rows: [[true]]} = Postgrex.query!(pg2, "SELECT pg_try_advisory_lock($1)", [id])
 
       assert lock(pg) |> is_nil
@@ -76,10 +80,13 @@ defmodule Rihanna.JobTest do
 
   describe "lock/2" do
     setup %{pg: pg, job: job} do
-      jobs = [job] ++ [
-        insert_job(pg, :ready_to_run),
-        insert_job(pg, :ready_to_run)
-      ]
+      jobs =
+        [job] ++
+          [
+            insert_job(pg, :ready_to_run),
+            insert_job(pg, :ready_to_run)
+          ]
+
       {:ok, %{jobs: jobs}}
     end
 
@@ -97,10 +104,10 @@ defmodule Rihanna.JobTest do
       assert length(locked) == 3
     end
 
-    test "locks N jobs if less than the number avaialable", %{pg: pg, jobs: jobs} do
+    test "locks N jobs if less than the number available", %{pg: pg, jobs: jobs} do
       locked = lock(pg, 2)
-      locked_set = locked |> MapSet.new
-      jobs_set = jobs |> MapSet.new
+      locked_set = locked |> MapSet.new()
+      jobs_set = jobs |> MapSet.new()
 
       assert MapSet.subset?(locked_set, jobs_set)
       assert length(locked) == 2
@@ -124,6 +131,59 @@ defmodule Rihanna.JobTest do
   end
 
   describe "mark_successful" do
+    setup %{pg: pg, job: %{id: id}} do
+      %{num_rows: 1} = Postgrex.query!(pg, "SELECT pg_advisory_lock($1)", [id])
+      :ok
+    end
+
+    test "deletes job if exists", %{pg: pg, job: job} do
+      assert {:ok, 1} = mark_successful(pg, job.id)
+
+      assert get_job_by_id(pg, job.id) |> is_nil
+    end
+
+    test "releases lock", %{pg: pg, job: job} do
+      %{num_rows: 1} =
+        Postgrex.query!(
+          pg,
+          """
+            SELECT objid AS id
+            FROM pg_locks pl
+            WHERE locktype = 'advisory'
+            AND pl.pid = pg_backend_pid()
+            AND objid = $1
+          """,
+          [job.id]
+        )
+
+      assert {:ok, 1} = mark_successful(pg, job.id)
+
+      assert %{num_rows: 0} =
+               Postgrex.query!(
+                 pg,
+                 """
+                   SELECT objid AS id
+                   FROM pg_locks pl
+                   WHERE locktype = 'advisory'
+                   AND pl.pid = pg_backend_pid()
+                   AND objid = $1
+                 """,
+                 [job.id]
+               )
+    end
+
+    test "does nothing if job does not exist", %{pg: pg, job: job} do
+      %{num_rows: 1} =
+        Postgrex.query!(
+          pg,
+          """
+            DELETE FROM rihanna_jobs WHERE id = $1
+          """,
+          [job.id]
+        )
+
+      assert {:ok, 0} = mark_successful(pg, job.id)
+    end
   end
 
   describe "mark_failed/3" do

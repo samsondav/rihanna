@@ -1,5 +1,6 @@
 defmodule Rihanna.Migration do
   @default_table_name Rihanna.Config.jobs_table_name()
+  @max_32_bit_signed_integer (:math.pow(2, 31) |> round) - 1
 
   #  TODO: __using__ for ecto
 
@@ -23,7 +24,7 @@ defmodule Rihanna.Migration do
     [
       """
       CREATE TABLE #{table_name} (
-        id bigint NOT NULL,
+        id int NOT NULL,
         mfa bytea NOT NULL,
         enqueued_at timestamp with time zone NOT NULL,
         failed_at timestamp with time zone,
@@ -38,9 +39,10 @@ defmodule Rihanna.Migration do
       CREATE SEQUENCE #{table_name}_id_seq
       START WITH 1
       INCREMENT BY 1
-      NO MINVALUE
-      NO MAXVALUE
-      CACHE 1;
+      MINVALUE 1
+      MAXVALUE #{@max_32_bit_signed_integer}
+      CACHE 1
+      CYCLE;
       """,
       """
       ALTER SEQUENCE #{table_name}_id_seq OWNED BY #{table_name}.id;

@@ -11,11 +11,15 @@ defmodule RihannaTest do
 
   describe "enqueue/1" do
     setup do
-      {:ok, _} = Postgrex.start_link(Keyword.put(
-        Application.fetch_env!(:rihanna, :postgrex),
-        :name,
-        Rihanna.Postgrex
-      ))
+      {:ok, _} =
+        Postgrex.start_link(
+          Keyword.put(
+            Application.fetch_env!(:rihanna, :postgrex),
+            :name,
+            Rihanna.Postgrex
+          )
+        )
+
       :ok
     end
 

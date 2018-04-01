@@ -59,7 +59,8 @@ defmodule Rihanna.Job do
 
   def from_sql([]), do: []
 
-  def retry_failed(pg \\ Rihanna.Job.Postgrex, job_id) when is_binary(job_id) or is_integer(job_id) do
+  def retry_failed(pg \\ Rihanna.Job.Postgrex, job_id)
+      when is_binary(job_id) or is_integer(job_id) do
     now = DateTime.utc_now()
 
     result =
@@ -150,20 +151,23 @@ defmodule Rihanna.Job do
     Rihanna.Job.from_sql(rows)
   end
 
-  def mark_successful(pg, job_id) do
-    Postgrex.query!(
-      pg,
-      """
-        DELETE FROM "#{table()}"
-        WHERE id = $1;
-      """,
-      [job_id]
-    )
+  def mark_successful(pg, job_id) when is_pid(pg) and is_integer(job_id) do
+    %{num_rows: num_rows} =
+      Postgrex.query!(
+        pg,
+        """
+          DELETE FROM "#{table()}"
+          WHERE id = $1;
+        """,
+        [job_id]
+      )
 
     release_lock(pg, job_id)
+
+    {:ok, num_rows}
   end
 
-  def mark_failed(pg, job_id, now, fail_reason) do
+  def mark_failed(pg, job_id, now, fail_reason) when is_pid(pg) and is_integer(job_id) do
     Postgrex.query!(
       pg,
       """
@@ -180,7 +184,7 @@ defmodule Rihanna.Job do
     release_lock(pg, job_id)
   end
 
-  defp release_lock(pg, job_id) do
+  defp release_lock(pg, job_id) when is_pid(pg) and is_integer(job_id) do
     %{rows: [[true]]} =
       Postgrex.query!(
         pg,

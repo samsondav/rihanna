@@ -26,7 +26,7 @@ defmodule TestHelper do
     Postgrex.query!(
       ctx.pg,
       """
-        TRUNCATE "rihanna_jobs
+      TRUNCATE "rihanna_jobs
       """,
       []
     )
@@ -44,15 +44,16 @@ defmodule TestHelper do
         [id]
       )
 
-    [job] = Rihanna.Job.from_sql(rows)
-
-    job
+    case Rihanna.Job.from_sql(rows) do
+      [job] -> job
+      [] -> nil
+    end
   end
 
   @test_mfa {IO, :puts, ["Desperado, sittin' in an old Monte Carlo"]}
 
   def insert_job(pg, :ready_to_run) do
-     result =
+    result =
       Postgrex.query!(
         pg,
         """
@@ -63,8 +64,7 @@ defmodule TestHelper do
         [:erlang.term_to_binary(@test_mfa)]
       )
 
-      [job] = Rihanna.Job.from_sql(result.rows)
-
+    [job] = Rihanna.Job.from_sql(result.rows)
 
     job
   end
