@@ -2,10 +2,7 @@ defmodule Rihanna.JobDispatcher do
   use GenServer
   require Logger
 
-  # poll interval is in milliseconds
-  @poll_interval 100
   @task_supervisor Rihanna.TaskSupervisor
-
 
   def start_link(config, opts) do
     db = Keyword.get(config, :db)
@@ -37,13 +34,13 @@ defmodule Rihanna.JobDispatcher do
 
     state = Map.put(state, :working, working)
 
-    Process.send_after(self(), :poll, @poll_interval + :rand.uniform(50))
+    Process.send_after(self(), :poll, poll_interval())
 
     {:noreply, state}
   end
 
-  # NOTE: We get passed the result of executing the job here but currently do
-  # nothing with it
+  # NOTE: We get passed the return result of executing the job here but
+  # currently do nothing with it
   def handle_info({ref, _result}, state = %{pg: pg, working: working}) do
     # Flush guarantees that any DOWN messages will be received before
     # demonitoring. This is probably unnecessary but it can't hurt to be sure.
@@ -61,7 +58,7 @@ defmodule Rihanna.JobDispatcher do
   def handle_info({:DOWN, ref, :process, _pid, reason}, state = %{pg: pg, working: working}) do
     {job, working} = Map.pop(working, ref)
 
-    # TODO: Should we demonitor here?
+    # TODO: Do we need to demonitor here?
 
     Rihanna.Job.mark_failed(pg, job.id, DateTime.utc_now(), Exception.format_exit(reason))
 
@@ -77,5 +74,10 @@ defmodule Rihanna.JobDispatcher do
 
   defp max_concurrency() do
     Rihanna.Config.dispatcher_max_concurrency()
+  end
+
+  def poll_interval() do
+    jitter = 0.2 * :rand.uniform() - 0.1
+    Rihanna.Config.poll_interval() + jitter
   end
 end

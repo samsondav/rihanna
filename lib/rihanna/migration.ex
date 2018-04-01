@@ -1,26 +1,52 @@
 defmodule Rihanna.Migration do
-  @default_table_name Rihanna.Config.jobs_table_name()
   @max_32_bit_signed_integer (:math.pow(2, 31) |> round) - 1
 
-  #  TODO: __using__ for ecto
+  @moduledoc """
+  TODO: Write something here...
+  """
 
-  defmacro up(table_name \\ @default_table_name) do
+  @doc """
+  TODO: using with Ecto...
+  """
+  defmacro __using__(opts) do
+    table_name = Keyword.get(opts, :table_name, Rihanna.Config.jobs_table_name()) |> to_string
+
     quote do
-      Enum.each(statements(unquote(table_name)), fn ->
-        execute(statement)
-      end)
+      def up() do
+        Enum.each(statements(unquote(table_name)), fn ->
+          execute(statement)
+        end)
+      end
+
+      def down() do
+        execute("""
+        DROP TABLE(#{unquote(table_name)});
+        """)
+      end
     end
   end
 
-  defmacro down(table_name \\ @default_table_name) do
-    quote do
-      execute("""
-      DROP TABLE(#{unquote(table_name)});
-      """)
-    end
-  end
+  @doc """
+  Returns a list of SQL statements that will create the Rihanna jobs table if
+  executed sequentially.
 
-  def statements(table_name \\ @default_table_name) do
+  By default it takes the name of the table from the application config.
+
+  You may optionally supply a table name as an argument if you want to override
+  this.
+
+  ## Examples
+
+    iex> Rihanna.Migration.statements
+    [...]
+
+    iex> Rihanna.Migration.statements("my_alternative_table_name")
+    [...]
+  """
+  @spec statements() :: list[String.t()]
+  @spec statements(String.t() | atom) :: list[String.t()]
+  def statements(table_name \\ Rihanna.Config.jobs_table_name())
+      when is_binary(table_name) or is_atom(table_name) do
     [
       """
       CREATE TABLE #{table_name} (
@@ -57,7 +83,7 @@ defmodule Rihanna.Migration do
     ]
   end
 
-  def sql(table_name \\ @default_table_name) do
+  def sql(table_name \\ Rihanna.Config.jobs_table_name()) do
     Enum.join(statements(table_name), "\n")
   end
 end

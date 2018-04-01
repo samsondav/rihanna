@@ -26,7 +26,7 @@ defmodule Rihanna.JobDispatcherTest do
 
       assert {:noreply, state} = JobDispatcher.handle_info(:poll, initial_state(pg))
 
-      assert_unordered_list_equality Map.keys(state), [:working, :pg]
+      assert_unordered_list_equality(Map.keys(state), [:working, :pg])
       assert state.pg == pg
 
       working = state.working
@@ -53,7 +53,8 @@ defmodule Rihanna.JobDispatcherTest do
     end
 
     test "executes up to dispatcher_max_concurrency() jobs", %{pg: pg} do
-      _jobs = Enum.map(1..3, fn n -> Rihanna.Job.enqueue({TestRig, :fun, [self(), "job-#{n}"]}) end)
+      _jobs =
+        Enum.map(1..3, fn n -> Rihanna.Job.enqueue({TestRig, :fun, [self(), "job-#{n}"]}) end)
 
       JobDispatcher.handle_info(:poll, initial_state(pg))
 
@@ -62,4 +63,6 @@ defmodule Rihanna.JobDispatcherTest do
       refute_receive {"job-3", _}
     end
   end
+
+  # TODO: Two more handle_info tests
 end
