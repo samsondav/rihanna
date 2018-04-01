@@ -99,7 +99,7 @@ defmodule Rihanna.JobTest do
       assert length(locked) == 3
     end
 
-    test "locks all available jobs if equal to` N", %{pg: pg, jobs: jobs} do
+    test "locks all available jobs if equal to N", %{pg: pg, jobs: jobs} do
       locked = lock(pg, 3)
 
       assert locked == jobs
@@ -129,6 +129,20 @@ defmodule Rihanna.JobTest do
       locked = lock(pg, 3)
       assert length(locked) == 2
       refute Enum.any?(locked, fn %{id: id} -> id == job.id end)
+    end
+
+    # This simulates the row-locks occur when a job has been deleted after the
+    # SELECT query already took it's MVCC snapshot. It's important to skip these
+    # locked jobs since in a pure sense they no longer exist.
+    test "skips jobs that are row-locked by another session", %{job: job, pg: pg, pg2: pg2} do
+      Postgrex.query!(pg2, "BEGIN", [])
+      Postgrex.query!(pg2, "SELECT id FROM rihanna_jobs WHERE id = $1 FOR UPDATE", [job.id])
+
+      locked = lock(pg, 3)
+      assert length(locked) == 2
+      refute Enum.any?(locked, fn %{id: id} -> id == job.id end)
+
+      Postgrex.query!(pg2, "ROLLBACK", [])
     end
   end
 
