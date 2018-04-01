@@ -7,9 +7,52 @@ You might consider using Rihanna if:
 - You need durable asynchronous jobs that are guaranteed to run even if the BEAM is restarted
 - You want a [beautiful web GUI](https://github.com/samphilipd/rihanna_ui) that allows you to inspect, delete and retry failed jobs
 - You want a simple queue that uses your existing Postges database and doesn't require any additional services or dependencies
-- You need to process less than about 1000 jobs per second (if you need more throughout than this you should probably skip Redis and consider a "real" messaging system like Kafka or ActiveMQ)
+- You need to process up to 10,000 jobs per second (if you need more throughout than this you should probably skip Redis and consider a "real" messaging system like Kafka or ActiveMQ)
 - You want to pass in arbitrary Elixir/Erlang terms that may not be JSON-serializable such as tuples or structs into your async function calls
 
+## Usage
+
+There are two ways to use Rihanna. The simplest way is to pass a mod-fun-args tuple like so:
+
+```elixir
+# normal, synchronous execution
+MyModule.my_fun(arg1, arg2)
+
+# schedule job for later execution and return immediately
+Rihanna.enqueue({MyModule, :my_fun, [arg1, arg2]})
+```
+
+You can supply any args including structs and tuples so
+
+The second way is to implement the `Rihanna.Job` behaviour and define the `perform/1` function. See [the docs](addlink) for more details on implementing your own job modules.
+
+```elixir
+defmodule MyApp.MyJob do
+  @behaviour Rihanna.Job
+
+  # NOTE: `perform/1` is a required callback. It takes exactly one argument. To
+  # pass multiple arguments, wrap them in a list and destructure in the
+  # function head as in this example
+  def perform([arg1, arg2]) do
+    success? = do_some_work(arg1, arg2)
+
+    if success? do
+      # job completed successfully
+      :ok
+    else
+      # job execution failed
+      {:error, :failed}
+    end
+  end
+end
+```
+
+Now you can schedule your jobs like so:
+
+```elixir
+# schedule job for later execution and return immediately
+Rihanna.enqueue(MyApp.MyJob, [arg1, arg2])
+```
 
 ## Installation
 
@@ -60,10 +103,6 @@ children = [
 ]
 ```
 
-## Usage
-
-TODO: Write this
-
 ## Configuration
 
 Rihanna should work out of the box without any configuration. However, should you
@@ -89,6 +128,10 @@ Performance is at least as good as [Que](https://github.com/chanks/que).
 I have seen it do around 1.5k jobs per second on a mid-2016 Macbook Pro. Significantly higher throughputs are possible with a beefier database server.
 
 More detailed benchmarks to come. For now see: [https://github.com/chanks/queue-shootout](https://github.com/chanks/queue-shootout).
+
+Q. Does it support multiple queues/scheduling/cron tasks?
+
+Not yet, but it will.
 
 Q. Why Rihanna?
 

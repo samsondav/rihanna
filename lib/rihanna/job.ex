@@ -1,13 +1,18 @@
 defmodule Rihanna.Job do
   require Logger
 
+  @type result :: any
+  @type reason :: any
+
+  @callback perform(arg :: any) :: :ok | {:ok, result} | {:error, reason}
+
   @moduledoc """
   Yea..... gonna write some
   """
 
   @fields [
     :id,
-    :mfa,
+    :term,
     :enqueued_at,
     :failed_at,
     :fail_reason
@@ -19,48 +24,54 @@ defmodule Rihanna.Job do
     GenServer.call(Rihanna.JobManager, job)
   end
 
-  def enqueue(mfa) do
-    serialized_mfa = :erlang.term_to_binary(mfa)
+  @doc false
+  def enqueue(term) do
+    serialized_term = :erlang.term_to_binary(term)
+
     now = DateTime.utc_now()
 
     %{rows: [job]} =
       Postgrex.query!(
         Rihanna.Job.Postgrex,
         """
-          INSERT INTO "#{table()}" (mfa, enqueued_at)
+          INSERT INTO "#{table()}" (term, enqueued_at)
           VALUES ($1, $2)
           RETURNING #{sql_fields()}
         """,
-        [serialized_mfa, now]
+        [serialized_term, now]
       )
 
     {:ok, from_sql(job)}
   end
 
+  @doc false
   def from_sql(rows = [row | _]) when is_list(rows) and is_list(row) do
     for row <- rows, do: from_sql(row)
   end
 
+  @doc false
   def from_sql([
         id,
-        serialized_mfa,
+        serialized_term,
         enqueued_at,
         failed_at,
         fail_reason
       ]) do
     %__MODULE__{
       id: id,
-      mfa: :erlang.binary_to_term(serialized_mfa),
+      term: :erlang.binary_to_term(serialized_term),
       enqueued_at: enqueued_at,
       failed_at: failed_at,
       fail_reason: fail_reason
     }
   end
 
+  @doc false
   def from_sql([]), do: []
 
+  @doc false
   def retry_failed(pg \\ Rihanna.Job.Postgrex, job_id)
-      when (is_pid(pg) and is_binary(job_id)) or is_integer(job_id) do
+      when (is_pid(pg) or is_atom(pg)) and is_integer(job_id) do
     now = DateTime.utc_now()
 
     result =
@@ -87,6 +98,7 @@ defmodule Rihanna.Job do
     end
   end
 
+  @doc false
   def lock(pg) when is_pid(pg) do
     case lock(pg, 1) do
       [job] ->
@@ -98,12 +110,13 @@ defmodule Rihanna.Job do
   end
 
   # TODO: Write some documentation for this monster
+  @doc false
   def lock(pg, n) when is_pid(pg) and is_integer(n) and n > 0 do
     table = table()
 
     lock_jobs = """
       WITH RECURSIVE jobs AS (
-        SELECT (j).*, pg_try_advisory_lock($1, (j).id) AS locked
+        SELECT (j).*, pg_try_advisory_lock($1::integer, (j).id) AS locked
         FROM (
           SELECT j
           FROM #{table} AS j
@@ -116,7 +129,7 @@ defmodule Rihanna.Job do
           LIMIT 1
         ) AS t1
         UNION ALL (
-          SELECT (j).*, pg_try_advisory_lock($1, (j).id) AS locked
+          SELECT (j).*, pg_try_advisory_lock($1::integer, (j).id) AS locked
           FROM (
             SELECT (
               SELECT j
@@ -143,7 +156,7 @@ defmodule Rihanna.Job do
         AND classid = $1
         AND pl.pid = pg_backend_pid()
       )
-      SELECT id, mfa, enqueued_at, failed_at, fail_reason
+      SELECT id, term, enqueued_at, failed_at, fail_reason
       FROM jobs
       WHERE locked
       LIMIT $2;
@@ -154,6 +167,7 @@ defmodule Rihanna.Job do
     Rihanna.Job.from_sql(rows)
   end
 
+  @doc false
   def mark_successful(pg, job_id) when is_pid(pg) and is_integer(job_id) do
     %{num_rows: num_rows} =
       Postgrex.query!(
@@ -170,6 +184,7 @@ defmodule Rihanna.Job do
     {:ok, num_rows}
   end
 
+  @doc false
   def mark_failed(pg, job_id, now, fail_reason) when is_pid(pg) and is_integer(job_id) do
     %{num_rows: num_rows} =
       Postgrex.query!(
@@ -201,10 +216,14 @@ defmodule Rihanna.Job do
       )
   end
 
+  @doc """
+  The name of the jobs table.
+  """
   def table() do
     Rihanna.Config.jobs_table_name()
   end
 
+  @doc false
   def classid() do
     Rihanna.Config.pg_advisory_lock_class_id()
   end

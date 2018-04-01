@@ -67,8 +67,14 @@ defmodule Rihanna.JobDispatcher do
 
   defp spawn_supervised_task(job) do
     Task.Supervisor.async_nolink(@task_supervisor, fn ->
-      {mod, fun, args} = job.mfa
-      apply(mod, fun, args)
+      case job.term do
+        {mod, fun, args} ->
+          # It's a simple MFA
+          apply(mod, fun, args)
+        {mod, arg} ->
+          # Assume that mod conforms to Rihanna.Job behaviour
+          apply(mod, :perform, [arg])
+      end
     end)
   end
 
@@ -77,7 +83,10 @@ defmodule Rihanna.JobDispatcher do
   end
 
   def poll_interval() do
-    jitter = 0.2 * :rand.uniform() - 0.1
-    Rihanna.Config.poll_interval() + jitter
+    base_poll_interval = Rihanna.Config.dispatcher_poll_interval()
+    jitter_fraction = 0.2 * :rand.uniform() - 0.1
+    jitter = base_poll_interval * jitter_fraction
+
+    (base_poll_interval + jitter) |> round
   end
 end

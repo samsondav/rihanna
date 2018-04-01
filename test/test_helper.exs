@@ -9,7 +9,12 @@ defmodule TestHelper do
   end
 
   def create_jobs_table(_ctx) do
-    {:ok, pg} = Postgrex.start_link(config())
+    pg = case Postgrex.start_link(config()) do
+      {:ok, pid} ->
+        pid
+      {:error, {:already_started, pid}} ->
+        pid
+    end
 
     drop_sqls = [
       """
@@ -56,18 +61,18 @@ defmodule TestHelper do
     end
   end
 
-  @test_mfa {Kernel, :+, [1, 1]}
+  @test_term {Kernel, :+, [1, 1]}
 
   def insert_job(pg, :ready_to_run) do
     result =
       Postgrex.query!(
         pg,
         """
-          INSERT INTO "rihanna_jobs" (mfa, enqueued_at)
+          INSERT INTO "rihanna_jobs" (term, enqueued_at)
           VALUES ($1, '2018-01-01')
           RETURNING *
         """,
-        [:erlang.term_to_binary(@test_mfa)]
+        [:erlang.term_to_binary(@test_term)]
       )
 
     [job] = Rihanna.Job.from_sql(result.rows)
@@ -81,7 +86,7 @@ defmodule TestHelper do
         pg,
         """
         INSERT INTO "rihanna_jobs" (
-          mfa,
+          term,
           enqueued_at,
           failed_at,
           fail_reason
@@ -89,7 +94,7 @@ defmodule TestHelper do
         VALUES ($1, '2018-01-01', '2018-01-02', 'Kaboom!')
         RETURNING *
         """,
-        [:erlang.term_to_binary(@test_mfa)]
+        [:erlang.term_to_binary(@test_term)]
       )
 
     [job] = Rihanna.Job.from_sql(result.rows)

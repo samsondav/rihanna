@@ -51,7 +51,7 @@ defmodule Rihanna.Migration do
       """
       CREATE TABLE #{table_name} (
         id int NOT NULL,
-        mfa bytea NOT NULL,
+        term bytea NOT NULL,
         enqueued_at timestamp with time zone NOT NULL,
         failed_at timestamp with time zone,
         fail_reason text,

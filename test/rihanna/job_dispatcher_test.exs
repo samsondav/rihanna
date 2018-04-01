@@ -9,7 +9,16 @@ defmodule Rihanna.JobDispatcherTest do
     %{working: %{}, pg: pg}
   end
 
-  defmodule TestRig do
+  defmodule BehaviourMock do
+    @behaviour Rihanna.Job
+
+    def perform([pid, msg]) do
+      Process.send(pid, {msg, self()}, [])
+      :ok
+    end
+  end
+
+  defmodule MFAMock do
     def fun(pid, msg) do
       Process.send(pid, {msg, self()}, [])
     end
@@ -36,12 +45,21 @@ defmodule Rihanna.JobDispatcherTest do
       assert hd(Map.values(working)) == job
     end
 
-    test "runs the job in Rihanna.JobSupervisor", %{pg: pg} do
-      {:ok, _job} = Rihanna.Job.enqueue({TestRig, :fun, [self(), "umbrella-ella-ella"]})
+    test "runs mfa-style job in Rihanna.JobSupervisor", %{pg: pg} do
+      {:ok, _job} = Rihanna.Job.enqueue({MFAMock, :fun, [self(), "umbrella-ella-ella"]})
 
       JobDispatcher.handle_info(:poll, initial_state(pg))
 
       assert_receive {"umbrella-ella-ella", worker_pid}
+      assert worker_pid != self()
+    end
+
+    test "runs behaviour-style job in Rihanna.JobSupervisor", %{pg: pg} do
+      {:ok, _job} = Rihanna.Job.enqueue({BehaviourMock, [self(), "Bitch better have my money"]})
+
+      JobDispatcher.handle_info(:poll, initial_state(pg))
+
+      assert_receive {"Bitch better have my money", worker_pid}
       assert worker_pid != self()
     end
   end
@@ -54,7 +72,7 @@ defmodule Rihanna.JobDispatcherTest do
 
     test "executes up to dispatcher_max_concurrency() jobs", %{pg: pg} do
       _jobs =
-        Enum.map(1..3, fn n -> Rihanna.Job.enqueue({TestRig, :fun, [self(), "job-#{n}"]}) end)
+        Enum.map(1..3, fn n -> Rihanna.Job.enqueue({MFAMock, :fun, [self(), "job-#{n}"]}) end)
 
       JobDispatcher.handle_info(:poll, initial_state(pg))
 
