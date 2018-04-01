@@ -5,26 +5,22 @@ Rihanna is a fast, reliable and easy-to-use Postgres-backed distributed job queu
 You might consider using Rihanna if:
 
 - You need durable asynchronous jobs that are guaranteed to run even if the BEAM is restarted
+- You want ACID guarantees around your jobs so you can be 100% sure they will never be lost
 - You want a [beautiful web GUI](https://github.com/samphilipd/rihanna_ui) that allows you to inspect, delete and retry failed jobs
-- You want a simple queue that uses your existing Postges database and doesn't require any additional services or dependencies
-- You need to process up to 10,000 jobs per second (if you need more throughout than this you should probably skip Redis and consider a "real" messaging system like Kafka or ActiveMQ)
-- You want to pass in arbitrary Elixir/Erlang terms that may not be JSON-serializable such as tuples or structs into your async function calls
+- You want a simple queue that uses your existing Postgres database and doesn't require any additional services or dependencies
+- You need to process up to 10,000 jobs per second (if you need more throughout than this you should probably consider a "real" messaging system like Kafka or ActiveMQ)
+- You want to pass arbitrary Elixir/Erlang terms that may not be JSON-serializable such as tuples or structs as arguments
 
 ## Usage
 
 There are two ways to use Rihanna. The simplest way is to pass a mod-fun-args tuple like so:
 
 ```elixir
-# normal, synchronous execution
-MyModule.my_fun(arg1, arg2)
-
 # schedule job for later execution and return immediately
 Rihanna.enqueue({MyModule, :my_fun, [arg1, arg2]})
 ```
 
-You can supply any args including structs and tuples so
-
-The second way is to implement the `Rihanna.Job` behaviour and define the `perform/1` function. See [the docs](addlink) for more details on implementing your own job modules.
+The second way is to implement the `Rihanna.Job` behaviour and define the `perform/1` function. Implementing this behaviour allows you to define retry strategies, show custom error messages on failure etc. See [the docs](addlink) for more details.
 
 ```elixir
 defmodule MyApp.MyJob do
@@ -56,7 +52,9 @@ Rihanna.enqueue(MyApp.MyJob, [arg1, arg2])
 
 ## Installation
 
-1. Add `rihanna` to your list of dependencies in `mix.exs`:
+### Step 1 - add the dependency
+
+Add `rihanna` to your list of dependencies in `mix.exs`:
 
 ```elixir
 def deps do
@@ -66,15 +64,17 @@ def deps do
 end
 ```
 
-2. Install with `mix deps.get`.
+Install with `mix deps.get`.
 
-3. Add a migration to create your jobs table
+### Step 2 - run the migration
+
+Add a migration to create your jobs table.
 
 Rihanna stores jobs in a table in your database. The default table name is "rihanna_jobs".
 
 #### Using Ecto
 
-Run `mix ecto.gen.migration create_rihanna_jobs` and make your migration look like this:
+The easiest way to create the database is with Ecto. Run `mix ecto.gen.migration create_rihanna_jobs` and make your migration look like this:
 
 ```elixir
 defmodule MyApp.CreateRihannaJobs do
@@ -88,7 +88,9 @@ Now you can run `mix ecto.migrate`.
 
 Ecto is not required to run Rihanna. If you want to create the table yourself, without Ecto, take a look at the docs for [Rihanna.Migration](insert_link_to_docs_here).
 
-4. Add `Rihanna.Supervisor` to your supervision tree
+### Step 3 - boot the supervisor
+
+Add `Rihanna.Supervisor` to your supervision tree
 
 `Rihanna.Supervisor` starts a job dispatcher and by adding it to your supervision tree it will automatically start running jobs when your app boots.
 
@@ -110,7 +112,7 @@ wish to tweak it, take a look at the documentation for [Rihanna.Config](insert_d
 
 ## FAQs
 
-Q. What guarantees does Rihanna provide?
+**Q. What guarantees does Rihanna provide?**
 
 Rihanna guarantees at-least-once execution of jobs regardless of node failures, netsplits or even database restarts.
 
@@ -121,19 +123,19 @@ Rihanna strives to never execute a job more than once, however, this may be unav
 
 For this reason jobs should be made idempotent where possible.
 
-Q. How many jobs per second can Rihanna process?
+**Q. How many jobs per second can Rihanna process?**
 
-Performance is at least as good as [Que](https://github.com/chanks/que).
+Performance should be at least as good as [Que](https://github.com/chanks/que).
 
 I have seen it do around 1.5k jobs per second on a mid-2016 Macbook Pro. Significantly higher throughputs are possible with a beefier database server.
 
 More detailed benchmarks to come. For now see: [https://github.com/chanks/queue-shootout](https://github.com/chanks/queue-shootout).
 
-Q. Does it support multiple queues/scheduling/cron tasks?
+**Q. Does it support multiple queues/scheduling/cron tasks?**
 
 Not yet, but it will.
 
-Q. Why Rihanna?
+**Q. Why Rihanna?**
 
-A. Because she knows how to [work, work, work, work, work](https://youtu.be/HL1UzIK-flA?t=18s).
+Because she knows how to [work, work, work, work, work](https://youtu.be/HL1UzIK-flA?t=18s).
 
