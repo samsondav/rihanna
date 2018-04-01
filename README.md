@@ -18,58 +18,41 @@ end
 
 2. Install with `mix deps.get`.
 
-3. Run `mix ecto.gen.migration create_rihanna_jobs` and make your migration look like this:
+3. Add a migration to create your jobs table
+
+Rihanna stores jobs in a table in your database. By default this is called "rihanna_jobs".
+
+Run `mix ecto.gen.migration create_rihanna_jobs` and make your migration look like this:
 
 ```elixir
-  require Rihanna.Migration
-
-  def change do
-    Rihanna.Migration.change()
-  end
+defmodule MyApp.CreateRihannaJobs do
+  use Rihanna.Migration
+end
 ```
 
-#### CONFIG STYLE 1
+4. Add `Rihanna.Supervisor` to your supervision tree
 
-Add the full repo config to your `config.exs`
+`Rihanna.Supervisor` starts a job dispatcher and by adding it to your supervision tree it will automatically start running jobs when your app boots.
 
-```elixir
-config :rihanna, Rihanna.Repo,
-  adapter: Ecto.Adapters.Postgres,
-  username: "postgres",
-  password: "postgres",
-  database: "rihanna_db",
-  hostname: "127.0.0.1",
-  port: 5432
-```
+Rihanna requires a database configuration to be passed in under the `postgrex` key. This is passed through directly to Postgrex.
 
-Add `Rihanna.Supervisor` to your supervision tree:
+If you are already using Ecto you can avoid duplicating your DB config by pulling this out of your existing Repo using `My.Repo.config()`.
 
 ```elixir
+# NOTE: In Phoenix you would find this inside `lib/my_app/application.ex`
 children = [
-  {Rihanna.Supervisor, [name: Rihanna.Supervisor]}
+  {Rihanna.Supervisor, [name: Rihanna.Supervisor, postgrex: My.Repo.config()]}
 ]
 ```
 
-#### CONFIG STYLE 2
+## Usage
 
-Add a minimal repo config to your `config.exs`
+TODO: Write this
 
-```elixir
-config :rihanna, Rihanna.Repo,
-  adapter: Ecto.Adapters.Postgres
-```
+## Configuration
 
-Pass the database configuration in when you start `Rihanna.Supervisor`:
-
-```elixir
-children = [
-  {Rihanna.Supervisor, [name: Rihanna.Supervisor, config: Your.Repo.config()]}
-]
-```
-
-#### TESTING
-
-1. Create a table called "rihanna_test"
+Rihanna should work out of the box without any configuration. However, should you
+wish to tweak it, take a look at the documentation for [Rihanna.Config](insert_documentation_here).
 
 ## FAQs
 

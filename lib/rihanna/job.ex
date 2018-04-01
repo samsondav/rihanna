@@ -12,7 +12,6 @@ defmodule Rihanna.Job do
     :failed_at,
     :fail_reason
   ]
-  @class_id Rihanna.Config.pg_advisory_lock_class_id()
 
   defstruct @fields
 
@@ -100,12 +99,14 @@ defmodule Rihanna.Job do
 
   # TODO: Write some documentation for this monster
   def lock(pg, n) when is_pid(pg) and is_integer(n) and n > 0 do
+    table = table()
+
     lock_jobs = """
       WITH RECURSIVE jobs AS (
-        SELECT (j).*, pg_try_advisory_lock(#{@class_id}, (j).id) AS locked
+        SELECT (j).*, pg_try_advisory_lock($1, (j).id) AS locked
         FROM (
           SELECT j
-          FROM #{table()} AS j
+          FROM #{table} AS j
           LEFT OUTER JOIN locks_held_by_this_session lh
           ON lh.id = j.id
           WHERE lh.id IS NULL
@@ -115,11 +116,11 @@ defmodule Rihanna.Job do
           LIMIT 1
         ) AS t1
         UNION ALL (
-          SELECT (j).*, pg_try_advisory_lock(#{@class_id}, (j).id) AS locked
+          SELECT (j).*, pg_try_advisory_lock($1, (j).id) AS locked
           FROM (
             SELECT (
               SELECT j
-              FROM #{table()} AS j
+              FROM #{table} AS j
               LEFT OUTER JOIN locks_held_by_this_session lh
               ON lh.id = j.id
               WHERE lh.id IS NULL
@@ -139,16 +140,16 @@ defmodule Rihanna.Job do
         SELECT objid AS id
         FROM pg_locks pl
         WHERE locktype = 'advisory'
-        AND classid = #{@class_id}
+        AND classid = $1
         AND pl.pid = pg_backend_pid()
       )
       SELECT id, mfa, enqueued_at, failed_at, fail_reason
       FROM jobs
       WHERE locked
-      LIMIT $1;
+      LIMIT $2;
     """
 
-    %{rows: rows} = Postgrex.query!(pg, lock_jobs, [n])
+    %{rows: rows} = Postgrex.query!(pg, lock_jobs, [classid(), n])
 
     Rihanna.Job.from_sql(rows)
   end
@@ -194,14 +195,18 @@ defmodule Rihanna.Job do
       Postgrex.query!(
         pg,
         """
-          SELECT pg_advisory_unlock(#{@class_id}, $1);
+          SELECT pg_advisory_unlock($1, $2);
         """,
-        [job_id]
+        [classid(), job_id]
       )
   end
 
   def table() do
     Rihanna.Config.jobs_table_name()
+  end
+
+  def classid() do
+    Rihanna.Config.pg_advisory_lock_class_id()
   end
 
   defp sql_fields() do
