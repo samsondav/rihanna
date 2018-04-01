@@ -131,7 +131,7 @@ defmodule Rihanna.JobTest do
       refute Enum.any?(locked, fn %{id: id} -> id == job.id end)
     end
 
-    # This simulates the row-locks occur when a job has been deleted after the
+    # This simulates the row-locks that occur when a job has been deleted after the
     # SELECT query already took it's MVCC snapshot. It's important to skip these
     # locked jobs since in a pure sense they no longer exist.
     test "skips jobs that are row-locked by another session", %{job: job, pg: pg, pg2: pg2} do

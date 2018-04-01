@@ -2,6 +2,12 @@
 ExUnit.start()
 
 defmodule TestHelper do
+  defmacro assert_unordered_list_equality(list_1, list_2) do
+    quote do
+      assert Enum.sort(unquote(list_1)) == Enum.sort(unquote(list_2))
+    end
+  end
+
   def create_jobs_table(_ctx) do
     {:ok, pg} = Postgrex.start_link(config())
 
@@ -50,7 +56,7 @@ defmodule TestHelper do
     end
   end
 
-  @test_mfa {IO, :puts, ["Desperado, sittin' in an old Monte Carlo"]}
+  @test_mfa {Kernel, :+, [1, 1]}
 
   def insert_job(pg, :ready_to_run) do
     result =
