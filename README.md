@@ -123,7 +123,7 @@ Rihanna strives to never execute a job more than once, however, this may be unav
 
 For this reason jobs should be made idempotent where possible.
 
-**Q. How many jobs per second can Rihanna process?**
+**Q. How fast is Rihanna?**
 
 Performance should be at least as good as [Que](https://github.com/chanks/que).
 
