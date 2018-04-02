@@ -7,7 +7,21 @@ defmodule Rihanna.Supervisor do
 
   def start_link(config, opts \\ []) do
     {db, config} = Keyword.pop_first(config, :postgrex, [])
-    Supervisor.start_link(__MODULE__, {db, config}, opts)
+    case db do
+      [] ->
+        raise """
+        Could not start Rihanna - database configuration was missing. Did you forget to pass postgres configuration into Rihanna.Supervisor?
+
+        For example:
+
+        children = [
+          {Rihanna.Supervisor, [postgrex: %{username: "postgres", password: "postgres", database: "rihanna_db", hostname: "localhost", port: 5432}]}
+        ]
+        """
+      db ->
+        db = Keyword.take(db, [:username, :password, :database, :hostname, :port])
+        Supervisor.start_link(__MODULE__, {db, config}, opts)
+    end
   end
 
   def init({db, _config}) do

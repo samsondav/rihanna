@@ -12,8 +12,10 @@ defmodule Rihanna.Migration do
     table_name = Keyword.get(opts, :table_name, Rihanna.Config.jobs_table_name()) |> to_string
 
     quote do
+      use Ecto.Migration
+
       def up() do
-        Enum.each(statements(unquote(table_name)), fn ->
+        Enum.each(Rihanna.Migration.statements(unquote(table_name)), fn statement ->
           execute(statement)
         end)
       end
