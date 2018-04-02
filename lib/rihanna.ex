@@ -32,6 +32,12 @@ defmodule Rihanna do
     raise ArgumentError, @enqueue_help_message
   end
 
+  def retry(job_id) when is_binary(job_id) do
+    job_id
+    |> String.to_integer
+    |> retry()
+  end
+
   def retry(job_id) when is_integer(job_id) and job_id > 0 do
     Rihanna.Job.retry_failed(job_id)
   end
