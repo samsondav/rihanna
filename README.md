@@ -86,7 +86,7 @@ Now you can run `mix ecto.migrate`.
 
 #### Without Ecto
 
-Ecto is not required to run Rihanna. If you want to create the table yourself, without Ecto, take a look at the docs for [Rihanna.Migration](insert_link_to_docs_here).
+Ecto is not required to run Rihanna. If you want to create the table yourself, without Ecto, take a look at the docs for [Rihanna.Migration](https://hexdocs.pm/rihanna/Rihanna.Migration.html#content).
 
 ### Step 3 - boot the supervisor
 
@@ -108,7 +108,7 @@ children = [
 ## Configuration
 
 Rihanna should work out of the box without any configuration. However, should you
-wish to tweak it, take a look at the documentation for [Rihanna.Config](insert_documentation_here).
+wish to tweak it, take a look at the documentation for [Rihanna.Config](https://hexdocs.pm/rihanna/Rihanna.Config.html).
 
 ## FAQs
 
