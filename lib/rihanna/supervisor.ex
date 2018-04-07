@@ -2,7 +2,30 @@ defmodule Rihanna.Supervisor do
   use Supervisor
 
   @moduledoc """
-  TODO: Write some documentation
+  The main supervisor for Rihanna.
+
+  Starts the Postgrex process necessary for enqueueing jobs, and also starts a
+  dispatcher for processing them.
+
+  ## Setup
+
+  Add `Rihanna.Supervisor` to your supervision tree.
+
+  By adding it to your supervision tree it will automatically start running jobs
+  when your app boots.
+
+  Rihanna requires a database configuration to be passed in under the `postgrex`
+  key. This is passed through directly to Postgrex.
+
+  If you are already using Ecto you can avoid duplicating your DB config by
+  pulling this out of your existing Repo using `My.Repo.config()`.
+
+  ```
+  # NOTE: In Phoenix you would find this inside `lib/my_app/application.ex`
+  children = [
+    {Rihanna.Supervisor, [name: Rihanna.Supervisor, postgrex: My.Repo.config()]}
+  ]
+  ```
   """
 
   def start_link(config, opts \\ []) do
@@ -24,6 +47,7 @@ defmodule Rihanna.Supervisor do
     end
   end
 
+  @doc false
   def init({db, _config}) do
     children = [
       %{

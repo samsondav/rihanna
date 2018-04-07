@@ -1,4 +1,20 @@
 defmodule Rihanna.Config do
+  @moduledoc """
+  Global configuration for Rihanna.
+
+  Sensible defaults have been chosen for you but if you want, you can optionally
+  override any of these values in your local configuration.
+
+  For example, to change the table name for jobs:
+
+  ```
+  config :rihanna, :jobs_table_name, "awesome_jobs"
+  ```
+  """
+
+  @doc """
+  The table name to use for Rihanna jobs.
+  """
   def jobs_table_name() do
     Application.get_env(:rihanna, :jobs_table_name, "rihanna_jobs")
   end
@@ -10,7 +26,8 @@ defmodule Rihanna.Config do
   of the advisory locking system.
 
   In the unimaginably unlucky scenario that this conflicts with a lock classid
-  that is already being used, you can change it here.
+  that is already being used on your system, you can change the classid that
+  Rihanna uses here.
   """
   def pg_advisory_lock_class_id() do
     Application.get_env(:rihanna, :pg_advisory_lock_class_id, 1_759_441_536)

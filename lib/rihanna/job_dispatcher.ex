@@ -4,6 +4,8 @@ defmodule Rihanna.JobDispatcher do
 
   @task_supervisor Rihanna.TaskSupervisor
 
+  @moduledoc false
+
   def start_link(config, opts) do
     db = Keyword.get(config, :db)
 
@@ -15,6 +17,7 @@ defmodule Rihanna.JobDispatcher do
     GenServer.start_link(__MODULE__, %{working: %{}, pg: pg}, opts)
   end
 
+  @doc false
   def init(state) do
     Process.send(self(), :poll, [])
     {:ok, state}

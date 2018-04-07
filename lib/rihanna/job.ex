@@ -3,11 +3,43 @@ defmodule Rihanna.Job do
 
   @type result :: any
   @type reason :: any
+  @type t :: %__MODULE__{}
 
-  @callback perform(arg :: any) :: :ok | {:ok, result} | {:error, reason}
+  @callback perform(arg :: any) :: :ok | {:ok, result} | :error | {:error, reason}
 
   @moduledoc """
-  Yea..... gonna write some
+  A behaviour for Rihanna jobs.
+
+  You must implement `c:Rihanna.Job.perform/1` in your job, and it must return
+  one of the following values:
+
+    - `:ok`
+    - `{:ok, result}`
+    - `:error`
+    - `{:error, reason}`
+
+  You can define your job like the example below:
+
+  ```
+  defmodule MyApp.MyJob do
+    @behaviour Rihanna.Job
+
+    # NOTE: `perform/1` is a required callback. It takes exactly one argument. To
+    # pass multiple arguments, wrap them in a list and destructure in the
+    # function head as in this example
+    def perform([arg1, arg2]) do
+      success? = do_some_work(arg1, arg2)
+
+      if success? do
+        # job completed successfully
+        :ok
+      else
+        # job execution failed
+        {:error, :failed}
+      end
+    end
+  end
+
   """
 
   @fields [
@@ -20,6 +52,7 @@ defmodule Rihanna.Job do
 
   defstruct @fields
 
+  @doc false
   def start(job) do
     GenServer.call(Rihanna.JobManager, job)
   end
@@ -109,7 +142,25 @@ defmodule Rihanna.Job do
     end
   end
 
-  # TODO: Write some documentation for this monster
+  # This query is at the heart of the how the dispatcher pulls jobs from the queue.
+  #
+  # It is heavily inspired by a similar query in Que: https://github.com/chanks/que/blob/0.x/lib/que/sql.rb#L5
+  #
+  # There are some minor additions:
+  #
+  # In the current implementation we are re-using the same connection
+  # to pull multiple jobs, we must join the pg_locks table to filter out jobs
+  # already locked by this connection. This is because pg_try_advisory_lock()
+  # will stack if we already hold the lock and take multiple locks instead.
+  #
+  # I could not find any easy way to check if one particular advisory lock is
+  # already held by the current session, hence the join to the pg_locks table.
+  # This may have minor performance implications if the poll interval is very
+  # short since the pg_locks table must be frozen every time the snapshot is taken.
+  #
+  # We also use a FOR UPDATE SKIP LOCKED since this causes the query to skip
+  # jobs that were completed (and deleted) by another session in the time since
+  # the table snapshot was taken.
   @doc false
   def lock(pg, n) when is_pid(pg) and is_integer(n) and n > 0 do
     table = table()
@@ -205,17 +256,6 @@ defmodule Rihanna.Job do
     {:ok, num_rows}
   end
 
-  defp release_lock(pg, job_id) when is_pid(pg) and is_integer(job_id) do
-    %{rows: [[true]]} =
-      Postgrex.query!(
-        pg,
-        """
-          SELECT pg_advisory_unlock($1, $2);
-        """,
-        [classid(), job_id]
-      )
-  end
-
   @doc """
   The name of the jobs table.
   """
@@ -226,6 +266,17 @@ defmodule Rihanna.Job do
   @doc false
   def classid() do
     Rihanna.Config.pg_advisory_lock_class_id()
+  end
+
+  defp release_lock(pg, job_id) when is_pid(pg) and is_integer(job_id) do
+    %{rows: [[true]]} =
+      Postgrex.query!(
+        pg,
+        """
+          SELECT pg_advisory_unlock($1, $2);
+        """,
+        [classid(), job_id]
+      )
   end
 
   defp sql_fields() do

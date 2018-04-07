@@ -2,12 +2,29 @@ defmodule Rihanna.Migration do
   @max_32_bit_signed_integer (:math.pow(2, 31) |> round) - 1
 
   @moduledoc """
-  TODO: Write something here...
+  A set of tools for creating the Rihanna jobs table.
+
+  Rihanna stores jobs in a table in your database. The default table name is
+  "rihanna_jobs". The name is configurable by either passing arguments or
+  setting the appropriate config option.
+
+  #### Using Ecto
+
+  The easiest way to create the database is with Ecto. Run `mix ecto.gen.migration create_rihanna_jobs` and make your migration look like this:
+
+  ```elixir
+  defmodule MyApp.CreateRihannaJobs do
+    use Rihanna.Migration
+  end
+  ```
+
+  Now you can run `mix ecto.migrate`.
+
+  #### Without Ecto
+
+  Ecto is not required to run Rihanna. If you want to create the table yourself, without Ecto, take a look at either `statements/0` or `sql/0`.
   """
 
-  @doc """
-  TODO: using with Ecto...
-  """
   defmacro __using__(opts) do
     table_name = Keyword.get(opts, :table_name, Rihanna.Config.jobs_table_name()) |> to_string
 
@@ -85,6 +102,11 @@ defmodule Rihanna.Migration do
     ]
   end
 
+  @doc """
+  Returns a string of semi-colon-terminated SQL statements that you can execute
+  directly to create the Rihanna jobs table.
+  """
+  @spec sql(String.t | atom) :: String.t
   def sql(table_name \\ Rihanna.Config.jobs_table_name()) do
     Enum.join(statements(table_name), "\n")
   end
