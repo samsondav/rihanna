@@ -171,9 +171,16 @@ defmodule Rihanna.Job do
         FROM (
           SELECT j
           FROM #{table} AS j
-          LEFT OUTER JOIN locks_held_by_this_session lh
-          ON lh.id = j.id
-          WHERE lh.id IS NULL
+          LEFT JOIN LATERAL (
+            SELECT objid AS id
+            FROM pg_locks
+            WHERE locktype = 'advisory'
+            AND classid = $1
+            AND pg_locks.pid = pg_backend_pid()
+            AND pg_locks.objid = j.id
+          ) locks_held
+          ON 1=1
+          WHERE locks_held.id IS NULL
           AND failed_at IS NULL
           ORDER BY enqueued_at, j.id
           FOR UPDATE SKIP LOCKED
@@ -185,9 +192,16 @@ defmodule Rihanna.Job do
             SELECT (
               SELECT j
               FROM #{table} AS j
-              LEFT OUTER JOIN locks_held_by_this_session lh
-              ON lh.id = j.id
-              WHERE lh.id IS NULL
+              LEFT JOIN LATERAL (
+                SELECT objid AS id
+                FROM pg_locks
+                WHERE locktype = 'advisory'
+                AND classid = $1
+                AND pg_locks.pid = pg_backend_pid()
+                AND pg_locks.objid = j.id
+              ) locks_held
+              ON 1=1
+              WHERE locks_held.id IS NULL
               AND failed_at IS NULL
               AND (j.enqueued_at, j.id) > (jobs.enqueued_at, jobs.id)
               ORDER BY enqueued_at, j.id
@@ -199,13 +213,6 @@ defmodule Rihanna.Job do
             LIMIT 1
           ) AS t1
         )
-      ),
-      locks_held_by_this_session AS (
-        SELECT objid AS id
-        FROM pg_locks pl
-        WHERE locktype = 'advisory'
-        AND classid = $1
-        AND pl.pid = pg_backend_pid()
       )
       SELECT id, term, enqueued_at, failed_at, fail_reason
       FROM jobs
