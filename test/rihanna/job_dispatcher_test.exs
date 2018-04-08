@@ -83,4 +83,24 @@ defmodule Rihanna.JobDispatcherTest do
   end
 
   # TODO: Two more handle_info tests
+  describe "handle_info/2 with successful job" do
+    test "demonitors process" do
+    end
+
+    test "marks job as successful" do
+    end
+
+    test "removes task from state"
+  end
+
+  describe "handle_info/2 with failed job" do
+    test "demonitors process" do
+    end
+
+    test "marks job as failed" do
+    end
+
+    test "removes task from state" do
+    end
+  end
 end

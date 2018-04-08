@@ -41,9 +41,9 @@ defmodule Rihanna do
 
   ## Example
 
-    iex> Rihanna.enqueue({IO, :puts, ["Umbrella-ella-ella"]})
+      > Rihanna.enqueue({IO, :puts, ["Umbrella-ella-ella"]})
   """
-  @spec enqueue(mfa) :: {:ok, Rihanna.Job.t}
+  @spec enqueue({module, atom, list()}) :: {:ok, Rihanna.Job.t}
   def enqueue(term = {mod, fun, args}) when is_atom(mod) and is_atom(fun) and is_list(args) do
     Rihanna.Job.enqueue(term)
   end

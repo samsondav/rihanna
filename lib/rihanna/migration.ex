@@ -56,11 +56,11 @@ defmodule Rihanna.Migration do
 
   ## Examples
 
-    iex> Rihanna.Migration.statements
-    [...]
+      > Rihanna.Migration.statements
+      [...]
 
-    iex> Rihanna.Migration.statements("my_alternative_table_name")
-    [...]
+      > Rihanna.Migration.statements("my_alternative_table_name")
+      [...]
   """
   @spec statements() :: list[String.t()]
   @spec statements(String.t() | atom) :: list[String.t()]

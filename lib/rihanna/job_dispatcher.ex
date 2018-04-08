@@ -61,7 +61,7 @@ defmodule Rihanna.JobDispatcher do
   def handle_info({:DOWN, ref, :process, _pid, reason}, state = %{pg: pg, working: working}) do
     {job, working} = Map.pop(working, ref)
 
-    # TODO: Do we need to demonitor here?
+    # NOTE: Do we need to demonitor here?
 
     Rihanna.Job.mark_failed(pg, job.id, DateTime.utc_now(), Exception.format_exit(reason))
 
@@ -85,7 +85,7 @@ defmodule Rihanna.JobDispatcher do
     Rihanna.Config.dispatcher_max_concurrency()
   end
 
-  def poll_interval() do
+  defp poll_interval() do
     base_poll_interval = Rihanna.Config.dispatcher_poll_interval()
     jitter_fraction = 0.2 * :rand.uniform() - 0.1
     jitter = base_poll_interval * jitter_fraction
