@@ -24,6 +24,24 @@ defmodule Rihanna.JobDispatcherTest do
     end
   end
 
+  defp lock_held?(pg, id) do
+    %{num_rows: num_rows} = Postgrex.query!(pg, """
+      SELECT objid
+      FROM pg_locks
+      WHERE locktype = 'advisory'
+      AND classid = $1
+      AND pg_locks.pid = pg_backend_pid()
+      AND pg_locks.objid = $2
+    """, [Rihanna.Config.pg_advisory_lock_class_id(), id])
+
+    case num_rows do
+      0 ->
+        false
+      1 ->
+        true
+    end
+  end
+
   setup %{pg: pg} do
     Postgrex.query!(pg, "DELETE FROM rihanna_jobs;", [])
     {:ok, %{js: Task.Supervisor.start_link(name: Rihanna.TaskSupervisor)}}
@@ -84,23 +102,59 @@ defmodule Rihanna.JobDispatcherTest do
 
   # TODO: Two more handle_info tests
   describe "handle_info/2 with successful job" do
-    test "demonitors process" do
+    setup do
+      {:ok, dispatcher} = Rihanna.JobDispatcher.start_link([db: Application.fetch_env!(:rihanna, :postgrex)], [])
+      {:ok, %{dispatcher: dispatcher}}
     end
 
-    test "marks job as successful" do
+    test "marks job as successful", %{pg: pg} do
+      {:ok, %{id: id}} = Rihanna.Job.enqueue({MFAMock, :fun, [self(), "job-mark-successful"]})
+
+      :timer.sleep(100)
+
+      assert get_job_by_id(pg, id) == nil
+      refute lock_held?(pg, id)
     end
 
-    test "removes task from state"
+    test "removes task from state", %{dispatcher: dispatcher} do
+      Rihanna.Job.enqueue({MFAMock, :fun, [self(), "job-test-remove-task-from-state"]})
+
+      assert_receive {"job-test-remove-task-from-state", _}
+      :timer.sleep(100)
+
+      state = :sys.get_state(dispatcher)
+
+      refute Enum.any?(state.working)
+      assert is_pid(state.pg)
+    end
   end
 
   describe "handle_info/2 with failed job" do
-    test "demonitors process" do
+    setup do
+      {:ok, dispatcher} = Rihanna.JobDispatcher.start_link([db: Application.fetch_env!(:rihanna, :postgrex)], [])
+      {:ok, %{dispatcher: dispatcher}}
     end
 
-    test "marks job as failed" do
+    test "marks job as failed", %{pg: pg} do
+      {:ok, %{id: id}} = Rihanna.Job.enqueue({Nope, :broken, [:kaboom!]})
+
+      :timer.sleep(100)
+
+      job = get_job_by_id(pg, id)
+
+      assert %DateTime{} = job.failed_at
+      assert job.fail_reason == "an exception was raised:\n    ** (UndefinedFunctionError) function Nope.broken/1 is undefined (module Nope is not available)\n        Nope.broken(:kaboom!)\n        (elixir) lib/task/supervised.ex:88: Task.Supervised.do_apply/2\n        (elixir) lib/task/supervised.ex:38: Task.Supervised.reply/5\n        (stdlib) proc_lib.erl:247: :proc_lib.init_p_do_apply/3"
     end
 
-    test "removes task from state" do
+    test "removes task from state", %{dispatcher: dispatcher} do
+      Rihanna.Job.enqueue({Nope, :broken, [:kaboom!]})
+
+      :timer.sleep(100)
+
+      state = :sys.get_state(dispatcher)
+
+      refute Enum.any?(state.working)
+      assert is_pid(state.pg)
     end
   end
 end

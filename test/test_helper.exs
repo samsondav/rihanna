@@ -9,7 +9,7 @@ defmodule TestHelper do
   end
 
   def create_jobs_table(_ctx) do
-    pg = case Postgrex.start_link(config()) do
+    pg = case Postgrex.start_link(db_config()) do
       {:ok, pid} ->
         pid
       {:error, {:already_started, pid}} ->
@@ -102,7 +102,7 @@ defmodule TestHelper do
     job
   end
 
-  defp config() do
+  defp db_config() do
     Application.fetch_env!(:rihanna, :postgrex)
     |> Keyword.put(:name, Rihanna.Job.Postgrex)
   end
