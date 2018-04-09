@@ -4,10 +4,10 @@ elixir:
   - 1.6.4
 
 addons:
-  postgresql: '10.3'
+  postgresql: '9.6'
 
 services:
-- postgresql
+  - postgresql
 
 before_script:
   - psql -c 'create database rihanna_test_db;' -U postgres
