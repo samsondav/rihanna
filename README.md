@@ -1,5 +1,9 @@
 # Rihanna
 
+[![Build Status](https://travis-ci.org/samphilipd/rihanna.svg?branch=master)](https://travis-ci.org/samphilipd/rihanna)
+[![Package Version](https://img.shields.io/hexpm/v/rihanna.svg)](https://hex.pm/packages/rihanna)
+[![Documentation](https://img.shields.io/badge/docs-latest-blue.svg)](https://hexdocs.pm/rihanna/)
+
 Rihanna is a fast, reliable and easy-to-use Postgres-backed distributed job queue for Elixir. It was inspired by the brilliant [Que](https://github.com/chanks/que) library for Ruby and uses advisory locks for speed.
 
 You might consider using Rihanna if:
