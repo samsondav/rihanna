@@ -178,8 +178,9 @@ defmodule Rihanna.Job do
             AND classid = $1
             AND pg_locks.pid = pg_backend_pid()
             AND pg_locks.objid = j.id
+            LIMIT 1
           ) locks_held
-          ON 1=1
+          ON true
           WHERE locks_held.id IS NULL
           AND failed_at IS NULL
           ORDER BY enqueued_at, j.id
@@ -199,8 +200,9 @@ defmodule Rihanna.Job do
                 AND classid = $1
                 AND pg_locks.pid = pg_backend_pid()
                 AND pg_locks.objid = j.id
+                LIMIT 1
               ) locks_held
-              ON 1=1
+              ON true
               WHERE locks_held.id IS NULL
               AND failed_at IS NULL
               AND (j.enqueued_at, j.id) > (jobs.enqueued_at, jobs.id)
