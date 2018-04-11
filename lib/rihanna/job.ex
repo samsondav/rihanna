@@ -152,19 +152,14 @@ defmodule Rihanna.Job do
   #
   # There are some minor additions:
   #
-  # In the current implementation we are re-using the same connection
-  # to pull multiple jobs, we must join the pg_locks table to filter out jobs
-  # already locked by this connection. This is because pg_try_advisory_lock()
-  # will stack if we already hold the lock and take multiple locks instead.
-  #
   # I could not find any easy way to check if one particular advisory lock is
-  # already held by the current session, hence the join to the pg_locks table.
-  # This may have minor performance implications if the poll interval is very
-  # short since the pg_locks table must be frozen every time the snapshot is taken.
+  # already held by the current session, so each dispatcher must pass in a list
+  # of ids for jobs which are currently already working so those can be excluded.
   #
   # We also use a FOR UPDATE SKIP LOCKED since this causes the query to skip
   # jobs that were completed (and deleted) by another session in the time since
-  # the table snapshot was taken.
+  # the table snapshot was taken. In rare cases under high concurrency levels,
+  # leaving this out can result in double executions.
   @doc false
   def lock(pg, n) when is_pid(pg) and is_integer(n) and n > 0 do
     lock(pg, n, [])
