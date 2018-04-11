@@ -143,7 +143,7 @@ defmodule Rihanna.JobDispatcherTest do
       job = get_job_by_id(pg, id)
 
       assert %DateTime{} = job.failed_at
-      assert job.fail_reason == "an exception was raised:\n    ** (UndefinedFunctionError) function Nope.broken/1 is undefined (module Nope is not available)\n        Nope.broken(:kaboom!)\n        (elixir) lib/task/supervised.ex:88: Task.Supervised.do_apply/2\n        (elixir) lib/task/supervised.ex:38: Task.Supervised.reply/5\n        (stdlib) proc_lib.erl:247: :proc_lib.init_p_do_apply/3"
+      assert "an exception was raised:\n    ** (UndefinedFunctionError) function Nope.broken/1 is undefined (module Nope is not available)" <> _rest = job.fail_reason
     end
 
     test "removes task from state", %{dispatcher: dispatcher} do
