@@ -133,7 +133,11 @@ defmodule Rihanna.Job do
 
   @doc false
   def lock(pg) when is_pid(pg) do
-    case lock(pg, 1) do
+    lock(pg, [])
+  end
+
+  def lock(pg, exclude_ids) when is_pid(pg) and is_list(exclude_ids) do
+    case lock(pg, 1, exclude_ids) do
       [job] ->
         job
 
@@ -163,6 +167,10 @@ defmodule Rihanna.Job do
   # the table snapshot was taken.
   @doc false
   def lock(pg, n) when is_pid(pg) and is_integer(n) and n > 0 do
+    lock(pg, n, [])
+  end
+
+  def lock(pg, n, exclude_ids) when is_pid(pg) and is_integer(n) and n > 0 and is_list(exclude_ids) do
     table = table()
 
     lock_jobs = """
@@ -171,20 +179,10 @@ defmodule Rihanna.Job do
         FROM (
           SELECT j
           FROM #{table} AS j
-          LEFT JOIN LATERAL (
-            SELECT objid AS id
-            FROM pg_locks
-            WHERE locktype = 'advisory'
-            AND classid = $1
-            AND pg_locks.pid = pg_backend_pid()
-            AND pg_locks.objid = j.id
-            LIMIT 1
-          ) locks_held
-          ON true
-          WHERE locks_held.id IS NULL
+          WHERE NOT (id = ANY($3))
           AND failed_at IS NULL
           ORDER BY enqueued_at, j.id
-          FOR UPDATE SKIP LOCKED
+          FOR UPDATE OF j SKIP LOCKED
           LIMIT 1
         ) AS t1
         UNION ALL (
@@ -193,21 +191,11 @@ defmodule Rihanna.Job do
             SELECT (
               SELECT j
               FROM #{table} AS j
-              LEFT JOIN LATERAL (
-                SELECT objid AS id
-                FROM pg_locks
-                WHERE locktype = 'advisory'
-                AND classid = $1
-                AND pg_locks.pid = pg_backend_pid()
-                AND pg_locks.objid = j.id
-                LIMIT 1
-              ) locks_held
-              ON true
-              WHERE locks_held.id IS NULL
+              WHERE NOT (id = ANY($3))
               AND failed_at IS NULL
               AND (j.enqueued_at, j.id) > (jobs.enqueued_at, jobs.id)
               ORDER BY enqueued_at, j.id
-              FOR UPDATE SKIP LOCKED
+              FOR UPDATE OF j SKIP LOCKED
               LIMIT 1
             ) AS j
             FROM jobs
@@ -219,10 +207,10 @@ defmodule Rihanna.Job do
       SELECT id, term, enqueued_at, failed_at, fail_reason
       FROM jobs
       WHERE locked
-      LIMIT $2;
+      LIMIT $2
     """
 
-    %{rows: rows} = Postgrex.query!(pg, lock_jobs, [classid(), n])
+    %{rows: rows} = Postgrex.query!(pg, lock_jobs, [classid(), n, exclude_ids])
 
     Rihanna.Job.from_sql(rows)
   end

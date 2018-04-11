@@ -24,10 +24,7 @@ defmodule Rihanna.JobDispatcher do
   end
 
   def handle_info(:poll, state = %{working: working, pg: pg}) do
-    # Fill the pipeline with as much work as we can get
-    available_concurrency = max_concurrency() - Enum.count(working)
-
-    jobs = Rihanna.Job.lock(pg, available_concurrency)
+    jobs = lock_jobs_for_execution(pg, working)
 
     working =
       for job <- jobs, into: working do
@@ -66,6 +63,15 @@ defmodule Rihanna.JobDispatcher do
     Rihanna.Job.mark_failed(pg, job.id, DateTime.utc_now(), Exception.format_exit(reason))
 
     {:noreply, Map.put(state, :working, working)}
+  end
+
+  defp lock_jobs_for_execution(pg, working) do
+    # Fill the pipeline with as much work as we can get
+    available_concurrency = max_concurrency() - Enum.count(working)
+
+    currently_locked_job_ids = for %{id: id} <- working, do: id
+
+    Rihanna.Job.lock(pg, available_concurrency, currently_locked_job_ids)
   end
 
   defp spawn_supervised_task(job) do

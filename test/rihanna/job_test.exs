@@ -127,10 +127,7 @@ defmodule Rihanna.JobTest do
     end
 
     test "skips jobs that are already locked by this session", %{job: job, pg: pg} do
-      %{rows: [[true]]} =
-        Postgrex.query!(pg, "SELECT pg_try_advisory_lock(#{@class_id}, $1)", [job.id])
-
-      locked = lock(pg, 3)
+      locked = lock(pg, 3, [job.id])
       assert length(locked) == 2
       refute Enum.any?(locked, fn %{id: id} -> id == job.id end)
     end
