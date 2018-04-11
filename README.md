@@ -15,6 +15,10 @@ You might consider using Rihanna if:
 - You need to process up to 10,000 jobs per second (if you need more throughout than this you should probably consider a "real" messaging system like Kafka or ActiveMQ)
 - You want to pass arbitrary Elixir/Erlang terms that may not be JSON-serializable such as tuples or structs as arguments
 
+## Requirements
+
+Rihanna requires Elixir >= 1.5 and Postgres >= 9.5
+
 ## Usage
 
 There are two ways to use Rihanna. The simplest way is to pass a mod-fun-args tuple like so:
