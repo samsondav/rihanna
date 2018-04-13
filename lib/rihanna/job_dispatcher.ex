@@ -1,6 +1,5 @@
 defmodule Rihanna.JobDispatcher do
   use GenServer
-  require Logger
 
   @task_supervisor Rihanna.TaskSupervisor
 
@@ -76,6 +75,7 @@ defmodule Rihanna.JobDispatcher do
 
   defp spawn_supervised_task(job) do
     Task.Supervisor.async_nolink(@task_supervisor, fn ->
+      Rihanna.Logger.log(:debug, fn -> "[Rihanna] Starting job #{inspect(job)}" end)
       case job.term do
         {mod, fun, args} ->
           # It's a simple MFA
@@ -84,6 +84,7 @@ defmodule Rihanna.JobDispatcher do
           # Assume that mod conforms to Rihanna.Job behaviour
           apply(mod, :perform, [arg])
       end
+      Rihanna.Logger.log(:debug, fn -> "[Rihanna] Finished job #{inspect(job)}" end)
     end)
   end
 

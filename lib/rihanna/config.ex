@@ -60,4 +60,15 @@ defmodule Rihanna.Config do
   def dispatcher_poll_interval() do
     Application.get_env(:rihanna, :poll_interval, 100)
   end
+
+  @doc """
+
+  Rihanna logs some lifecycle events. However, this logging is disabled by
+  default so as not to unnecessarily pollute your existing application logs.
+
+  If you want to see Rihanna logs, set this config option to true.
+  """
+  def logging?() do
+    Application.get_env(:rihanna, :logging, false)
+  end
 end
