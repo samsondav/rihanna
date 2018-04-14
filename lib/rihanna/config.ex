@@ -62,13 +62,13 @@ defmodule Rihanna.Config do
   end
 
   @doc """
+  Rihanna logs nothing by default.
 
-  Rihanna logs some lifecycle events. However, this logging is disabled by
-  default so as not to unnecessarily pollute your existing application logs.
-
-  If you want to see Rihanna logs, set this config option to true.
+  By configuring Rihanna with debug: true and setting Logger's log level to
+  :debug, you can get much more information about what it is doing during
+  operation to troubleshoot issues.
   """
-  def logging?() do
-    Application.get_env(:rihanna, :logging, false)
+  def debug?() do
+    Application.get_env(:rihanna, :debug, false)
   end
 end
