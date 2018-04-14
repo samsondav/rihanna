@@ -17,19 +17,6 @@ defmodule RihannaTest do
     end
   end
 
-  setup do
-    {:ok, _} =
-      Postgrex.start_link(
-        Keyword.put(
-          Application.fetch_env!(:rihanna, :postgrex),
-          :name,
-          Rihanna.Postgrex
-        )
-      )
-
-    :ok
-  end
-
   describe "enqueue/1 with mfa" do
     test "returns the job struct" do
       {:ok, job} = Rihanna.enqueue(@term)
