@@ -11,7 +11,7 @@ services:
   - postgresql
 
 before_script:
-  - psql -c 'create database rihanna_db;' -U postgres
+  - psql -c 'create database rihanna_db;' -U postgres -h localhost
 
 script:
   - mix test
