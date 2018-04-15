@@ -9,7 +9,12 @@ defmodule TestHelper do
   end
 
   def create_jobs_table(_ctx) do
-    {:ok, pg} = Postgrex.start_link(db_config())
+    pg = case Postgrex.start_link(db_config()) do
+      {:ok, pid} ->
+        pid
+      {:error, {:already_started, pid}} ->
+        pid
+    end
 
     drop_sqls = [
       """
