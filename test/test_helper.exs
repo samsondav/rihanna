@@ -1,4 +1,5 @@
 {:ok, _} = Application.ensure_all_started(:postgrex)
+{:ok, _} = Postgrex.start_link(Application.fetch_env!(:rihanna, :postgrex) |> Keyword.put(:name, Rihanna.Job.Postgrex))
 ExUnit.start()
 
 defmodule TestHelper do
@@ -9,12 +10,7 @@ defmodule TestHelper do
   end
 
   def create_jobs_table(_ctx) do
-    pg = case Postgrex.start_link(db_config()) do
-      {:ok, pid} ->
-        pid
-      {:error, {:already_started, pid}} ->
-        pid
-    end
+    {:ok, pg} = Postgrex.start_link(Application.fetch_env!(:rihanna, :postgrex))
 
     drop_sqls = [
       """
@@ -100,10 +96,5 @@ defmodule TestHelper do
     [job] = Rihanna.Job.from_sql(result.rows)
 
     job
-  end
-
-  defp db_config() do
-    Application.fetch_env!(:rihanna, :postgrex)
-    |> Keyword.put(:name, Rihanna.Job.Postgrex)
   end
 end
