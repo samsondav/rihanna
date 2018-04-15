@@ -8,7 +8,7 @@ defmodule Rihanna.Config do
   For example, to change the table name for jobs:
 
   ```
-  config :rihanna, :jobs_table_name, "awesome_jobs"
+  config :rihanna, jobs_table_name: "awesome_jobs"
   ```
   """
 
@@ -28,6 +28,12 @@ defmodule Rihanna.Config do
   In the unimaginably unlucky scenario that this conflicts with a lock classid
   that is already being used on your system, you can change the classid that
   Rihanna uses here.
+
+  ## Example
+
+  ```
+  config :rihanna, pg_advisory_lock_class_id: 42
+  ```
   """
   def pg_advisory_lock_class_id() do
     Application.get_env(:rihanna, :pg_advisory_lock_class_id, 1_759_441_536)
@@ -39,6 +45,12 @@ defmodule Rihanna.Config do
   50 is chosen as a sensible default. Tuning this might increase or decrease
   your throughput depending on a lot of factors including database churn and
   how many other dispatchers you are running.
+
+  ## Example
+
+  ```
+  config :rihanna, dispatcher_max_concurrency: 25
+  ```
   """
   def dispatcher_max_concurrency() do
     Application.get_env(:rihanna, :dispatcher_max_concurrency, 50)
@@ -56,6 +68,12 @@ defmodule Rihanna.Config do
   will be added to the poll interval.
   2. A small, random amount of jitter is added to prevent multiple dispatchers started
   simultaneously from hitting the database at the same time.
+
+  ## Example
+
+  ```
+  config :rihanna, dispatcher_poll_interval: :timer.seconds(1)
+  ```
   """
   def dispatcher_poll_interval() do
     Application.get_env(:rihanna, :poll_interval, 100)
@@ -67,6 +85,12 @@ defmodule Rihanna.Config do
   By configuring Rihanna with debug: true and setting Logger's log level to
   :debug, you can get much more information about what it is doing during
   operation to troubleshoot issues.
+
+  ## Example
+
+  ```
+  config :rihanna, debug: true
+  ```
   """
   def debug?() do
     Application.get_env(:rihanna, :debug, false)
