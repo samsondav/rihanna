@@ -24,3 +24,7 @@ rihannajob-*.tar
 
 # Ignore local config
 config/local.exs
+
+
+# Mac OS garbage
+.DS_Store
