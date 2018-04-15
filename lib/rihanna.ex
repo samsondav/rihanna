@@ -61,9 +61,8 @@ defmodule Rihanna do
   The argument may be anything.
 
   See `Rihanna.Job` for more on how to implement your own jobs.
-  ```
 
-  Now you can enqueue a job like so:
+  You can enqueue a job like so:
 
   ```
   # schedule job for later execution and return immediately
