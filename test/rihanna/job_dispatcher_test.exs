@@ -24,6 +24,14 @@ defmodule Rihanna.JobDispatcherTest do
     end
   end
 
+  defmodule BadMFAMock do
+    @behaviour Rihanna.Job
+
+    def perform(_) do
+      raise "Kaboom!"
+    end
+  end
+
   defp lock_held?(pg, id) do
     %{num_rows: num_rows} = Postgrex.query!(pg, """
       SELECT objid
@@ -129,7 +137,7 @@ defmodule Rihanna.JobDispatcherTest do
     end
   end
 
-  describe "handle_info/2 with failed job" do
+  describe "handle_info/2 with missing module" do
     setup do
       {:ok, dispatcher} = Rihanna.JobDispatcher.start_link([db: Application.fetch_env!(:rihanna, :postgrex)], [])
       {:ok, %{dispatcher: dispatcher}}
@@ -148,6 +156,35 @@ defmodule Rihanna.JobDispatcherTest do
 
     test "removes task from state", %{dispatcher: dispatcher} do
       Rihanna.Job.enqueue({Nope, :broken, [:kaboom!]})
+
+      :timer.sleep(100)
+
+      state = :sys.get_state(dispatcher)
+
+      refute Enum.any?(state.working)
+      assert is_pid(state.pg)
+    end
+  end
+
+  describe "handle_info/2 with job that raises error" do
+    setup do
+      {:ok, dispatcher} = Rihanna.JobDispatcher.start_link([db: Application.fetch_env!(:rihanna, :postgrex)], [])
+      {:ok, %{dispatcher: dispatcher}}
+    end
+
+    test "marks job as failed", %{pg: pg} do
+      {:ok, %{id: id}} = Rihanna.Job.enqueue({BadMFAMock, :perform, [:ok]})
+
+      :timer.sleep(100)
+
+      job = get_job_by_id(pg, id)
+
+      assert %DateTime{} = job.failed_at
+      assert "an exception was raised:\n    ** (RuntimeError) Kaboom!" <> _rest = job.fail_reason
+    end
+
+    test "removes task from state", %{dispatcher: dispatcher} do
+      Rihanna.Job.enqueue({BadMFAMock, :perform, [:ok]})
 
       :timer.sleep(100)
 
