@@ -76,7 +76,7 @@ defmodule Rihanna.Config do
   ```
   """
   def dispatcher_poll_interval() do
-    Application.get_env(:rihanna, :poll_interval, 100)
+    Application.get_env(:rihanna, :dispatcher_poll_interval, 100)
   end
 
   @doc """

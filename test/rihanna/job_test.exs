@@ -145,6 +145,10 @@ defmodule Rihanna.JobTest do
 
       Postgrex.query!(pg2, "ROLLBACK", [])
     end
+
+    test "returns empty list if n = 0", %{pg: pg} do
+      assert lock(pg, 0) == []
+    end
   end
 
   describe "mark_successful" do

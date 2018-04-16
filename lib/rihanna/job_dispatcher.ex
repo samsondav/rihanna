@@ -68,7 +68,7 @@ defmodule Rihanna.JobDispatcher do
     # Fill the pipeline with as much work as we can get
     available_concurrency = max_concurrency() - Enum.count(working)
 
-    currently_locked_job_ids = for %{id: id} <- working, do: id
+    currently_locked_job_ids = for %{id: id} <- Map.values(working), do: id
 
     Rihanna.Job.lock(pg, available_concurrency, currently_locked_job_ids)
   end

@@ -161,8 +161,12 @@ defmodule Rihanna.Job do
   # the table snapshot was taken. In rare cases under high concurrency levels,
   # leaving this out can result in double executions.
   @doc false
-  def lock(pg, n) when is_pid(pg) and is_integer(n) and n > 0 do
+  def lock(pg, n) do
     lock(pg, n, [])
+  end
+
+  def lock(_, 0, _) do
+    []
   end
 
   def lock(pg, n, exclude_ids) when is_pid(pg) and is_integer(n) and n > 0 and is_list(exclude_ids) do

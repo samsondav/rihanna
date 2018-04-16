@@ -106,6 +106,17 @@ defmodule Rihanna.JobDispatcherTest do
       assert_receive {"job-2", _}
       refute_receive {"job-3", _}
     end
+
+    test "does not lock jobs already working", %{pg: pg} do
+      [{:ok, job} | _] =
+        Enum.map(1..3, fn n -> Rihanna.Job.enqueue({MFAMock, :fun, [self(), "job-#{n}"]}) end)
+
+      JobDispatcher.handle_info(:poll, %{working: %{make_ref() => job}, pg: pg})
+
+      refute_receive {"job-1", _}
+      assert_receive {"job-2", _}
+      refute_receive {"job-3", _}
+    end
   end
 
   # TODO: Two more handle_info tests
@@ -192,6 +203,50 @@ defmodule Rihanna.JobDispatcherTest do
 
       refute Enum.any?(state.working)
       assert is_pid(state.pg)
+    end
+  end
+
+  defmodule LongJob do
+    @behaviour Rihanna.Job
+
+    def perform(_) do
+      LongJob.Counter.increment()
+      :timer.sleep(500)
+      :ok
+    end
+  end
+
+  defmodule LongJob.Counter do
+    use Agent
+
+    def start_link(_) do
+      Agent.start_link(fn -> 0 end, name: __MODULE__)
+    end
+
+    def increment() do
+      Agent.update(__MODULE__, fn count ->
+        count + 1
+      end)
+    end
+
+    def get_count() do
+      Agent.get(__MODULE__, &(&1))
+    end
+  end
+
+  describe "dispatcher when job takes longer than poll interval" do
+    setup do
+      {:ok, dispatcher} = Rihanna.JobDispatcher.start_link([db: Application.fetch_env!(:rihanna, :postgrex)], [])
+      {:ok, _} = LongJob.Counter.start_link(:ok)
+      {:ok, %{dispatcher: dispatcher}}
+    end
+
+    test "executes job only once" do
+      Rihanna.enqueue(LongJob, :ok)
+
+      :timer.sleep 600
+
+      assert LongJob.Counter.get_count() == 1
     end
   end
 end
