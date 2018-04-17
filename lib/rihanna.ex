@@ -14,6 +14,13 @@ defmodule Rihanna do
   You must have started `Rihanna.Supervisor` otherwise you will see an error trying
   to enqueue or retry jobs.
 
+  ## Database Connections
+
+  Rihanna requires 1 + N database connections per node, where 1 connection is used
+  for the external API of enqueuing/retrying jobs and N is the number of
+  dispatchers. The default configuration is to run one dispatcher per node, so
+  this will use 2 database connections.
+
   ## Notes on queueing
 
   Rihanna uses a FIFO job queue, so jobs will be processed roughly in the order
