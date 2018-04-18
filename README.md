@@ -120,6 +120,10 @@ wish to tweak it, take a look at the documentation for [Rihanna.Config](https://
 
 ## FAQs
 
+**Q: How many jobs can be processed concurrently?**
+
+By default Rihanna processes a maximum of 50 jobs per dispatcher. This number is configurable, see [the docs](https://hexdocs.pm/rihanna/0.5.2/Rihanna.Config.html#dispatcher_max_concurrency/0).
+
 **Q. What guarantees does Rihanna provide?**
 
 Rihanna guarantees at-least-once execution of jobs regardless of node failures, netsplits or even database restarts.
@@ -127,7 +131,7 @@ Rihanna guarantees at-least-once execution of jobs regardless of node failures, 
 Rihanna strives to never execute a job more than once, however, this may be unavoidable in certain failure scenarios such as
 
 - a node losing its connection to the database
-- a node dying while executing a job
+- a node dying during execution of a job
 
 For this reason jobs should be made idempotent where possible.
 
@@ -137,7 +141,7 @@ No. Rihanna jobs run for as long as they need to.
 
 One thing to be aware of is that if you restart your application (e.g. because you deployed) then all running jobs on that node will be exited. For this reason it is probably sensible not to make your jobs take an extremely long time.
 
-**Q: How many database connections does Rihanna hold?**
+**Q: How many database connections does Rihanna hold open?**
 
 Rihanna requires 1 + N database connections per node, where 1 connection is used
 for the external API of enqueuing/retrying jobs and N is the number of
