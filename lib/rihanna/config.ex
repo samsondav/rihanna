@@ -20,6 +20,10 @@ defmodule Rihanna.Config do
   end
 
   @doc """
+  Specify the classid to use for advisory locks.
+
+  ## Details
+
   In Postgres, advisory locks are scoped to a classid.
 
   Here we use a random classid to prevent potential collisions with other users
@@ -80,11 +84,11 @@ defmodule Rihanna.Config do
   end
 
   @doc """
-  Rihanna logs nothing by default.
+  Toggle debug logging.
 
-  By configuring Rihanna with debug: true and setting Logger's log level to
-  :debug, you can get much more information about what it is doing during
-  operation to troubleshoot issues.
+  Rihanna logs nothing by default. By configuring Rihanna with debug: true and
+  setting Logger's log level to :debug, you can get much more information about
+  what it is doing during operation to troubleshoot issues.
 
   ## Example
 

@@ -136,6 +136,7 @@ defmodule Rihanna.Job do
     lock(pg, [])
   end
 
+  @doc false
   def lock(pg, exclude_ids) when is_pid(pg) and is_list(exclude_ids) do
     case lock(pg, 1, exclude_ids) do
       [job] ->
@@ -165,10 +166,12 @@ defmodule Rihanna.Job do
     lock(pg, n, [])
   end
 
+  @doc false
   def lock(_, 0, _) do
     []
   end
 
+  @doc false
   def lock(pg, n, exclude_ids) when is_pid(pg) and is_integer(n) and n > 0 and is_list(exclude_ids) do
     table = table()
 
@@ -255,6 +258,7 @@ defmodule Rihanna.Job do
   @doc """
   The name of the jobs table.
   """
+  @spec table() :: String.t
   def table() do
     Rihanna.Config.jobs_table_name()
   end

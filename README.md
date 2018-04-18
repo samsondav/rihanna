@@ -137,6 +137,15 @@ No. Rihanna jobs run for as long as they need to.
 
 One thing to be aware of is that if you restart your application (e.g. because you deployed) then all running jobs on that node will be exited. For this reason it is probably sensible not to make your jobs take an extremely long time.
 
+**Q: How many database connections does Rihanna hold?**
+
+Rihanna requires 1 + N database connections per node, where 1 connection is used
+for the external API of enqueuing/retrying jobs and N is the number of
+dispatchers.
+
+In the default configuration of one dispatcher per node, Rihanna will use 2
+database connections per node.
+
 **Q. How fast is Rihanna?**
 
 Performance should be at least as good as [Que](https://github.com/chanks/que).

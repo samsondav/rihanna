@@ -5,8 +5,8 @@ defmodule Rihanna.Migration do
   A set of tools for creating the Rihanna jobs table.
 
   Rihanna stores jobs in a table in your database. The default table name is
-  "rihanna_jobs". The name is configurable by either passing arguments or
-  setting the appropriate config option.
+  "rihanna_jobs". The name is configurable by either passing it as an argument
+  to the functions below or setting `:jobs_table_name` in Rihanna's config.
 
   #### Using Ecto
 
