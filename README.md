@@ -162,6 +162,18 @@ More detailed benchmarks to come. For now see: [https://github.com/chanks/queue-
 
 Not yet, but it will.
 
+**Q. Are there risks of arbitrary code execution with the MFA variant?**
+
+Short answer: No.
+
+Long answer:
+
+In order to do anything the attacker first needs to have obtained write access to your production database. In most companies, internal and customer data is far more important than whatever code is executing so you're already effectively hosed at this point.
+
+By default you can call Rihanna with any mod-fun-args tuple. This does give a potential attacker a few more options than if they were restricted to simply calling the `perform/1` function on an existing module with different arguments.
+
+If you really want to turn this behaviour off, you can set the `behaviour_only` config option to `true`.
+
 **Q. Why Rihanna?**
 
 Because she knows how to [work, work, work, work, work](https://youtu.be/HL1UzIK-flA?t=18s).

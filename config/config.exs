@@ -11,7 +11,8 @@ config :rihanna,
   ],
   debug: true
 
-config :logger, level: :debug
+# config :logger, level: :debug
+config :logger, level: :warn
 
 if File.exists?("config/local.exs") do
   import_config "local.exs"

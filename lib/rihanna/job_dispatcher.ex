@@ -79,7 +79,11 @@ defmodule Rihanna.JobDispatcher do
       case job.term do
         {mod, fun, args} ->
           # It's a simple MFA
-          apply(mod, fun, args)
+          if Rihanna.Config.behaviour_only?() do
+            raise "[Rihanna] Cannot execute MFA job because Rihanna was configured with the `behaviour_only` config option set to true."
+          else
+            apply(mod, fun, args)
+          end
         {mod, arg} ->
           # Assume that mod conforms to Rihanna.Job behaviour
           apply(mod, :perform, [arg])

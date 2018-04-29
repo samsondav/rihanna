@@ -99,4 +99,21 @@ defmodule Rihanna.Config do
   def debug?() do
     Application.get_env(:rihanna, :debug, false)
   end
+
+  @doc """
+  Restricts Rihanna to only running jobs that conform to the Rihanna behaviour.
+
+  Being able to call Rihanna with mod-fun-args is convenient but presets a very
+  slight increase in attack surface area. Some people may want to turn this off,
+  which you can do by setting this option to true.
+
+  ## Example
+
+  ```
+  config :rihanna, behaviour_only: true
+  ```
+  """
+  def behaviour_only?() do
+    Application.get_env(:rihanna, :behaviour_only, false)
+  end
 end

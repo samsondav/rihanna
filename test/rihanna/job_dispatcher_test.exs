@@ -90,6 +90,34 @@ defmodule Rihanna.JobDispatcherTest do
     end
   end
 
+  describe "when behaviour_only: true" do
+    setup do
+      Application.put_env(:rihanna, :behaviour_only, true)
+
+      on_exit(fn ->
+        Application.put_env(:rihanna, :behaviour_only, false)
+      end)
+
+      :ok
+    end
+
+    test "does not run mfa-style job if behaviour_only config is set", %{pg: pg} do
+      {:ok, job} = Rihanna.Job.enqueue({MFAMock, :fun, [self(), "umbrella-ella-ella"]})
+
+      JobDispatcher.handle_info(:poll, initial_state(pg))
+
+      assert_receive {:DOWN, _ref, :process, _pid,
+       {%RuntimeError{
+          message: "[Rihanna] Cannot execute MFA job because Rihanna was configured with the `behaviour_only` config option set to true."
+        },
+        _
+        }
+      }
+
+      refute_receive {"umbrella-ella-ella", _}
+    end
+  end
+
   describe "handle_info(:poll, state) with multiple jobs" do
     setup do
       Application.put_env(:rihanna, :dispatcher_max_concurrency, 2)
