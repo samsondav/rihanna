@@ -118,6 +118,10 @@ children = [
 Rihanna should work out of the box without any configuration. However, should you
 wish to tweak it, take a look at the documentation for [Rihanna.Config](https://hexdocs.pm/rihanna/Rihanna.Config.html).
 
+## Architecture/Supervision tree
+
+![Architecture/Supervision tree](docs/architecture.png?raw=true "Rihanna supervision tree")
+
 ## FAQs
 
 **Q: How many jobs can be processed concurrently?**
