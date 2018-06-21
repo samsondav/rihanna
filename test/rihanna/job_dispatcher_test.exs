@@ -55,6 +55,22 @@ defmodule Rihanna.JobDispatcherTest do
     {:ok, %{js: Task.Supervisor.start_link(name: Rihanna.TaskSupervisor)}}
   end
 
+  describe "linking processes" do
+    setup do
+      {:ok, dispatcher} = Rihanna.JobDispatcher.start_link([db: Application.fetch_env!(:rihanna, :postgrex)], [])
+      {:ok, %{dispatcher: dispatcher}}
+    end
+
+    test "it will crash if it's Postgrex connection crashes as well", %{dispatcher: dispatcher} do
+      Process.flag(:trap_exit, true)
+      pg_session = :sys.get_state(dispatcher).pg
+
+      Process.exit(pg_session, :kill)
+
+      assert_receive {:EXIT, ^dispatcher, _}
+    end
+  end
+
   describe "handle_info(:poll, state) with one available job" do
     test "retrieves the job and puts it into the state", %{pg: pg} do
       job = insert_job(pg, :ready_to_run)
