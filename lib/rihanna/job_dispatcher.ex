@@ -8,16 +8,18 @@ defmodule Rihanna.JobDispatcher do
   def start_link(config, opts) do
     db = Keyword.get(config, :db)
 
+    GenServer.start_link(__MODULE__, db, opts)
+  end
+
+  @doc false
+  def init(db) do
     # NOTE: These are linked because it is important that the pg session is also
     # killed if the JobDispatcher dies since otherwise we may leave dangling
     # locks in the zombie pg process
     {:ok, pg} = Postgrex.start_link(db)
 
-    GenServer.start_link(__MODULE__, %{working: %{}, pg: pg}, opts)
-  end
+    state = %{working: %{}, pg: pg}
 
-  @doc false
-  def init(state) do
     Process.send(self(), :poll, [])
     {:ok, state}
   end
