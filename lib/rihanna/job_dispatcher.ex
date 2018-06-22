@@ -2,6 +2,7 @@ defmodule Rihanna.JobDispatcher do
   use GenServer
 
   @task_supervisor Rihanna.TaskSupervisor
+  @startup_delay if Mix.env == :test, do: 0, else: :timer.seconds(5)
 
   @moduledoc false
 
@@ -20,7 +21,9 @@ defmodule Rihanna.JobDispatcher do
 
     state = %{working: %{}, pg: pg}
 
-    Process.send(self(), :poll, [])
+    # Use a startup delay to avoid killing the supervisor if we can't connect
+    # to the database for some reason.
+    Process.send_after(self(), :poll, @startup_delay)
     {:ok, state}
   end
 
