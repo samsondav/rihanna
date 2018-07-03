@@ -172,7 +172,8 @@ defmodule Rihanna.Job do
   end
 
   @doc false
-  def lock(pg, n, exclude_ids) when is_pid(pg) and is_integer(n) and n > 0 and is_list(exclude_ids) do
+  def lock(pg, n, exclude_ids)
+      when is_pid(pg) and is_integer(n) and n > 0 and is_list(exclude_ids) do
     table = table()
 
     lock_jobs = """
@@ -258,7 +259,7 @@ defmodule Rihanna.Job do
   @doc """
   The name of the jobs table.
   """
-  @spec table() :: String.t
+  @spec table() :: String.t()
   def table() do
     Rihanna.Config.jobs_table_name()
   end

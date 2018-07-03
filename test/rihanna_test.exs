@@ -4,18 +4,11 @@ defmodule RihannaTest do
 
   import Rihanna
   import TestHelper
+  alias Rihanna.Mocks.MockJob
 
   setup_all [:create_jobs_table]
 
   @term {IO, :puts, ["Work, work, work, work, work."]}
-
-  defmodule MockJob do
-    @behaviour Rihanna.Job
-
-    def perform(arg) do
-      {:ok, arg}
-    end
-  end
 
   describe "enqueue/1 with mfa" do
     test "returns the job struct" do
@@ -68,7 +61,7 @@ defmodule RihannaTest do
       assert %DateTime{} = job.enqueued_at
       assert job.fail_reason |> is_nil
       assert job.failed_at |> is_nil
-      assert job.term == {RihannaTest.MockJob, :arg}
+      assert job.term == {Rihanna.Mocks.MockJob, :arg}
     end
 
     test "inserts the job to the DB", %{pg: pg} do
@@ -80,7 +73,7 @@ defmodule RihannaTest do
       assert %DateTime{} = job.enqueued_at
       assert job.fail_reason |> is_nil
       assert job.failed_at |> is_nil
-      assert job.term == {RihannaTest.MockJob, :arg}
+      assert job.term == {Rihanna.Mocks.MockJob, :arg}
     end
 
     test "shows helpful error for invalid argument" do

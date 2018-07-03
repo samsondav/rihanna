@@ -3,48 +3,40 @@ defmodule Rihanna.JobDispatcherTest do
   import TestHelper
   alias Rihanna.JobDispatcher
 
+  alias Rihanna.Mocks.{
+    LongJob,
+    BehaviourMock,
+    MFAMock,
+    BadMFAMock,
+    ErrorBehaviourMock,
+    ErrorTupleBehaviourMock
+  }
+
   setup_all :create_jobs_table
 
   def initial_state(pg) do
     %{working: %{}, pg: pg}
   end
 
-  defmodule BehaviourMock do
-    @behaviour Rihanna.Job
-
-    def perform([pid, msg]) do
-      Process.send(pid, {msg, self()}, [])
-      :ok
-    end
-  end
-
-  defmodule MFAMock do
-    def fun(pid, msg) do
-      Process.send(pid, {msg, self()}, [])
-    end
-  end
-
-  defmodule BadMFAMock do
-    @behaviour Rihanna.Job
-
-    def perform(_) do
-      raise "Kaboom!"
-    end
-  end
-
   defp lock_held?(pg, id) do
-    %{num_rows: num_rows} = Postgrex.query!(pg, """
-      SELECT objid
-      FROM pg_locks
-      WHERE locktype = 'advisory'
-      AND classid = $1
-      AND pg_locks.pid = pg_backend_pid()
-      AND pg_locks.objid = $2
-    """, [Rihanna.Config.pg_advisory_lock_class_id(), id])
+    %{num_rows: num_rows} =
+      Postgrex.query!(
+        pg,
+        """
+          SELECT objid
+          FROM pg_locks
+          WHERE locktype = 'advisory'
+          AND classid = $1
+          AND pg_locks.pid = pg_backend_pid()
+          AND pg_locks.objid = $2
+        """,
+        [Rihanna.Config.pg_advisory_lock_class_id(), id]
+      )
 
     case num_rows do
       0 ->
         false
+
       1 ->
         true
     end
@@ -57,7 +49,9 @@ defmodule Rihanna.JobDispatcherTest do
 
   describe "linking processes" do
     setup do
-      {:ok, dispatcher} = Rihanna.JobDispatcher.start_link([db: Application.fetch_env!(:rihanna, :postgrex)], [])
+      {:ok, dispatcher} =
+        Rihanna.JobDispatcher.start_link([db: Application.fetch_env!(:rihanna, :postgrex)], [])
+
       {:ok, %{dispatcher: dispatcher}}
     end
 
@@ -118,17 +112,15 @@ defmodule Rihanna.JobDispatcherTest do
     end
 
     test "does not run mfa-style job if behaviour_only config is set", %{pg: pg} do
-      {:ok, job} = Rihanna.Job.enqueue({MFAMock, :fun, [self(), "umbrella-ella-ella"]})
+      {:ok, _job} = Rihanna.Job.enqueue({MFAMock, :fun, [self(), "umbrella-ella-ella"]})
 
       JobDispatcher.handle_info(:poll, initial_state(pg))
 
       assert_receive {:DOWN, _ref, :process, _pid,
-       {%RuntimeError{
-          message: "[Rihanna] Cannot execute MFA job because Rihanna was configured with the `behaviour_only` config option set to true."
-        },
-        _
-        }
-      }
+                      {%RuntimeError{
+                         message:
+                           "[Rihanna] Cannot execute MFA job because Rihanna was configured with the `behaviour_only` config option set to true."
+                       }, _}}
 
       refute_receive {"umbrella-ella-ella", _}
     end
@@ -166,7 +158,9 @@ defmodule Rihanna.JobDispatcherTest do
   # TODO: Two more handle_info tests
   describe "handle_info/2 with successful job" do
     setup do
-      {:ok, dispatcher} = Rihanna.JobDispatcher.start_link([db: Application.fetch_env!(:rihanna, :postgrex)], [])
+      {:ok, dispatcher} =
+        Rihanna.JobDispatcher.start_link([db: Application.fetch_env!(:rihanna, :postgrex)], [])
+
       {:ok, %{dispatcher: dispatcher}}
     end
 
@@ -192,9 +186,64 @@ defmodule Rihanna.JobDispatcherTest do
     end
   end
 
+  describe "handle_info/2 with job that returns error" do
+    setup do
+      {:ok, dispatcher} =
+        Rihanna.JobDispatcher.start_link([db: Application.fetch_env!(:rihanna, :postgrex)], [])
+
+      {:ok, %{dispatcher: dispatcher}}
+    end
+
+    test "marks job as failed when returns {:error, reason}", %{pg: pg} do
+      ref = make_ref()
+      {:ok, %{id: id}} = Rihanna.Job.enqueue({ErrorTupleBehaviourMock, [self(), ref]})
+      :timer.sleep(100)
+      %Rihanna.Job{fail_reason: reason} = get_job_by_id(pg, id)
+      assert reason == "Job Failed\n{:error, \"failed for some reason\"}"
+    end
+
+    test "removes task from state when returns {:error, reason}", %{dispatcher: dispatcher} do
+      ref = make_ref()
+      Rihanna.Job.enqueue({ErrorTupleBehaviourMock, [self(), ref]})
+
+      assert_receive {^ref, _}
+
+      :timer.sleep(100)
+
+      state = :sys.get_state(dispatcher)
+
+      refute Enum.any?(state.working)
+      assert is_pid(state.pg)
+    end
+
+    test "marks job as failed when returns :error", %{pg: pg} do
+      ref = make_ref()
+      {:ok, %{id: id}} = Rihanna.Job.enqueue({ErrorBehaviourMock, [self(), ref]})
+      :timer.sleep(100)
+      %Rihanna.Job{fail_reason: reason} = get_job_by_id(pg, id)
+      assert reason == "Job Failed\n{:error, \"failed for some reason\"}"
+    end
+
+    test "removes task from state when returns :error", %{dispatcher: dispatcher} do
+      ref = make_ref()
+      Rihanna.Job.enqueue({ErrorBehaviourMock, [self(), ref]})
+
+      assert_receive {^ref, _}
+
+      :timer.sleep(100)
+
+      state = :sys.get_state(dispatcher)
+
+      refute Enum.any?(state.working)
+      assert is_pid(state.pg)
+    end
+  end
+
   describe "handle_info/2 with missing module" do
     setup do
-      {:ok, dispatcher} = Rihanna.JobDispatcher.start_link([db: Application.fetch_env!(:rihanna, :postgrex)], [])
+      {:ok, dispatcher} =
+        Rihanna.JobDispatcher.start_link([db: Application.fetch_env!(:rihanna, :postgrex)], [])
+
       {:ok, %{dispatcher: dispatcher}}
     end
 
@@ -206,7 +255,9 @@ defmodule Rihanna.JobDispatcherTest do
       job = get_job_by_id(pg, id)
 
       assert %DateTime{} = job.failed_at
-      assert "an exception was raised:\n    ** (UndefinedFunctionError) function Nope.broken/1 is undefined (module Nope is not available)" <> _rest = job.fail_reason
+
+      assert "an exception was raised:\n    ** (UndefinedFunctionError) function Nope.broken/1 is undefined (module Nope is not available)" <>
+               _rest = job.fail_reason
     end
 
     test "removes task from state", %{dispatcher: dispatcher} do
@@ -223,7 +274,9 @@ defmodule Rihanna.JobDispatcherTest do
 
   describe "handle_info/2 with job that raises error" do
     setup do
-      {:ok, dispatcher} = Rihanna.JobDispatcher.start_link([db: Application.fetch_env!(:rihanna, :postgrex)], [])
+      {:ok, dispatcher} =
+        Rihanna.JobDispatcher.start_link([db: Application.fetch_env!(:rihanna, :postgrex)], [])
+
       {:ok, %{dispatcher: dispatcher}}
     end
 
@@ -250,47 +303,21 @@ defmodule Rihanna.JobDispatcherTest do
     end
   end
 
-  defmodule LongJob do
-    @behaviour Rihanna.Job
-
-    def perform(_) do
-      LongJob.Counter.increment()
-      :timer.sleep(500)
-      :ok
-    end
-  end
-
-  defmodule LongJob.Counter do
-    use Agent
-
-    def start_link(_) do
-      Agent.start_link(fn -> 0 end, name: __MODULE__)
-    end
-
-    def increment() do
-      Agent.update(__MODULE__, fn count ->
-        count + 1
-      end)
-    end
-
-    def get_count() do
-      Agent.get(__MODULE__, &(&1))
-    end
-  end
-
   describe "dispatcher when job takes longer than poll interval" do
     setup do
-      {:ok, dispatcher} = Rihanna.JobDispatcher.start_link([db: Application.fetch_env!(:rihanna, :postgrex)], [])
-      {:ok, _} = LongJob.Counter.start_link(:ok)
+      {:ok, dispatcher} =
+        Rihanna.JobDispatcher.start_link([db: Application.fetch_env!(:rihanna, :postgrex)], [])
+
+      {:ok, _} = Rihanna.Mocks.LongJob.Counter.start_link(:ok)
       {:ok, %{dispatcher: dispatcher}}
     end
 
     test "executes job only once" do
       Rihanna.enqueue(LongJob, :ok)
 
-      :timer.sleep 600
+      :timer.sleep(600)
 
-      assert LongJob.Counter.get_count() == 1
+      assert Rihanna.Mocks.LongJob.Counter.get_count() == 1
     end
   end
 end
