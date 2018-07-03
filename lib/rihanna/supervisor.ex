@@ -30,6 +30,7 @@ defmodule Rihanna.Supervisor do
 
   def start_link(config, opts \\ []) do
     {db, config} = Keyword.pop_first(config, :postgrex, [])
+
     case db do
       [] ->
         raise """
@@ -41,6 +42,7 @@ defmodule Rihanna.Supervisor do
           {Rihanna.Supervisor, [postgrex: %{username: "postgres", password: "postgres", database: "rihanna_db", hostname: "localhost", port: 5432}]}
         ]
         """
+
       db ->
         db = Keyword.take(db, [:username, :password, :database, :hostname, :port])
         Supervisor.start_link(__MODULE__, {db, config}, opts)

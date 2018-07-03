@@ -31,17 +31,17 @@ defmodule Rihanna do
   """
 
   @enqueue_help_message """
-    Rihanna.Enqueue requires either one argument in the form {mod, fun, args} or
-    two arguments of a module implementing Rihanna.Job and its arg.
+  Rihanna.Enqueue requires either one argument in the form {mod, fun, args} or
+  two arguments of a module implementing Rihanna.Job and its arg.
 
-    For example, to run IO.puts("Hello"):
+  For example, to run IO.puts("Hello"):
 
-    > Rihanna.enqueue({IO, :puts, ["Hello"]})
+  > Rihanna.enqueue({IO, :puts, ["Hello"]})
 
-    Or, if you have a job called MyJob that implements the Rihanna.Job behaviour:
+  Or, if you have a job called MyJob that implements the Rihanna.Job behaviour:
 
-    > Rihanna.enqueue(MyJob, arg)
-    """
+  > Rihanna.enqueue(MyJob, arg)
+  """
 
   @doc """
   Enqueues a job specified as a simple mod-fun-args tuple.
@@ -50,7 +50,7 @@ defmodule Rihanna do
 
       > Rihanna.enqueue({IO, :puts, ["Umbrella-ella-ella"]})
   """
-  @spec enqueue({module, atom, list()}) :: {:ok, Rihanna.Job.t}
+  @spec enqueue({module, atom, list()}) :: {:ok, Rihanna.Job.t()}
   def enqueue(term = {mod, fun, args}) when is_atom(mod) and is_atom(fun) and is_list(args) do
     Rihanna.Job.enqueue(term)
   end
@@ -76,7 +76,7 @@ defmodule Rihanna do
   Rihanna.enqueue(MyApp.MyJob, [arg1, arg2])
   ```
   """
-  @spec enqueue(module, any) :: {:ok, Rihanna.Job.t}
+  @spec enqueue(module, any) :: {:ok, Rihanna.Job.t()}
   def enqueue(mod, arg) when is_atom(mod) do
     Rihanna.Job.enqueue({mod, arg})
   end
@@ -91,10 +91,10 @@ defmodule Rihanna do
   Note that this only works if the job has failed - if it has not yet run or is
   currently in progress, this function will do nothing.
   """
-  @spec retry(String.t) :: {:ok, :retried} | {:error, :job_not_found}
+  @spec retry(String.t()) :: {:ok, :retried} | {:error, :job_not_found}
   def retry(job_id) when is_binary(job_id) do
     job_id
-    |> String.to_integer
+    |> String.to_integer()
     |> retry()
   end
 

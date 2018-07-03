@@ -106,7 +106,7 @@ defmodule Rihanna.Migration do
   Returns a string of semi-colon-terminated SQL statements that you can execute
   directly to create the Rihanna jobs table.
   """
-  @spec sql(String.t | atom) :: String.t
+  @spec sql(String.t() | atom) :: String.t()
   def sql(table_name \\ Rihanna.Config.jobs_table_name()) do
     Enum.join(statements(table_name), "\n")
   end

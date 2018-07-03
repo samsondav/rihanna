@@ -2,7 +2,7 @@ defmodule Rihanna.JobDispatcher do
   use GenServer
 
   @task_supervisor Rihanna.TaskSupervisor
-  @startup_delay if Mix.env == :test, do: 0, else: :timer.seconds(5)
+  @startup_delay if Mix.env() == :test, do: 0, else: :timer.seconds(5)
 
   @moduledoc false
 
@@ -43,16 +43,23 @@ defmodule Rihanna.JobDispatcher do
     {:noreply, state}
   end
 
-  # NOTE: We get passed the return result of executing the job here but
-  # currently do nothing with it
-  def handle_info({ref, _result}, state = %{pg: pg, working: working}) do
+  def handle_info({ref, result}, state = %{pg: pg, working: working}) do
     # Flush guarantees that any DOWN messages will be received before
     # demonitoring. This is probably unnecessary but it can't hurt to be sure.
     Process.demonitor(ref, [:flush])
 
     {job, working} = Map.pop(working, ref)
 
-    Rihanna.Job.mark_successful(pg, job.id)
+    case result do
+      {:error, _} ->
+        mark_failed(pg, job, result)
+
+      :error ->
+        mark_failed(pg, job, result)
+
+      _ ->
+        Rihanna.Job.mark_successful(pg, job.id)
+    end
 
     state = Map.put(state, :working, working)
 
@@ -69,6 +76,15 @@ defmodule Rihanna.JobDispatcher do
     {:noreply, Map.put(state, :working, working)}
   end
 
+  defp mark_failed(pg, %{id: id}, result) do
+    Rihanna.Job.mark_failed(
+      pg,
+      id,
+      DateTime.utc_now(),
+      "Job Failed\n#{inspect(result, limit: :infinity)}"
+    )
+  end
+
   defp lock_jobs_for_execution(pg, working) do
     # Fill the pipeline with as much work as we can get
     available_concurrency = max_concurrency() - Enum.count(working)
@@ -81,19 +97,26 @@ defmodule Rihanna.JobDispatcher do
   defp spawn_supervised_task(job) do
     Task.Supervisor.async_nolink(@task_supervisor, fn ->
       Rihanna.Logger.log(:debug, fn -> "[Rihanna] Starting job #{job.id}" end)
-      case job.term do
-        {mod, fun, args} ->
-          # It's a simple MFA
-          if Rihanna.Config.behaviour_only?() do
-            raise "[Rihanna] Cannot execute MFA job because Rihanna was configured with the `behaviour_only` config option set to true."
-          else
-            apply(mod, fun, args)
-          end
-        {mod, arg} ->
-          # Assume that mod conforms to Rihanna.Job behaviour
-          apply(mod, :perform, [arg])
-      end
+
+      result =
+        case job.term do
+          {mod, fun, args} ->
+            # It's a simple MFA
+            if Rihanna.Config.behaviour_only?() do
+              raise "[Rihanna] Cannot execute MFA job because Rihanna was configured with the `behaviour_only` config option set to true."
+            else
+              apply(mod, fun, args)
+            end
+
+          {mod, arg} ->
+            # Assume that mod conforms to Rihanna.Job behaviour
+            # TODO: Mark as failed if job returns error
+            # TODO: Add `on_completion` hook that passes in result of job
+            apply(mod, :perform, [arg])
+        end
+
       Rihanna.Logger.log(:debug, fn -> "[Rihanna] Finished job #{job.id}" end)
+      result
     end)
   end
 
