@@ -13,7 +13,11 @@ defmodule Rihanna.MixProject do
       docs: [
         main: "Rihanna",
         extras: ["README.md"]
-      ]
+      ],
+      # Docs
+      name: "Rihanna",
+      source_url: "https://github.com/samphilipd/rihanna",
+      homepage_url: "https://github.com/samphilipd/rihanna/README.md"
     ]
   end
 
@@ -41,7 +45,7 @@ defmodule Rihanna.MixProject do
       description: "Rihanna is a database-backed job queue.",
       licenses: ["MIT"],
       maintainers: ["sampdavies@gmail.com"],
-      links: %{}
+      links: %{"GitHub" => "https://github.com/samphilipd/rihanna"}
     ]
   end
 end
