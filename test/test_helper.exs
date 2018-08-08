@@ -2,7 +2,8 @@
 
 {:ok, _} =
   Postgrex.start_link(
-    Application.fetch_env!(:rihanna, :postgrex) |> Keyword.put(:name, Rihanna.Job.Postgrex)
+    Application.fetch_env!(:rihanna, :postgrex)
+    |> Keyword.put(:name, Rihanna.Job.Postgrex)
   )
 
 ExUnit.start()

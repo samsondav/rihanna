@@ -72,6 +72,7 @@ defmodule Rihanna.Migration do
         id int NOT NULL,
         term bytea NOT NULL,
         enqueued_at timestamp with time zone NOT NULL,
+        due_at timestamp with time zone,
         failed_at timestamp with time zone,
         fail_reason text,
         CONSTRAINT failed_at_required_fail_reason CHECK((failed_at IS NOT NULL AND fail_reason IS NOT NULL) OR (failed_at IS NULL and fail_reason IS NULL))

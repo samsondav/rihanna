@@ -46,6 +46,7 @@ defmodule Rihanna.Job do
     :id,
     :term,
     :enqueued_at,
+    :due_at,
     :failed_at,
     :fail_reason
   ]
@@ -58,7 +59,7 @@ defmodule Rihanna.Job do
   end
 
   @doc false
-  def enqueue(term) do
+  def enqueue(term, due_at \\ nil) do
     serialized_term = :erlang.term_to_binary(term)
 
     now = DateTime.utc_now()
@@ -67,11 +68,11 @@ defmodule Rihanna.Job do
       Postgrex.query!(
         Rihanna.Job.Postgrex,
         """
-          INSERT INTO "#{table()}" (term, enqueued_at)
-          VALUES ($1, $2)
+          INSERT INTO "#{table()}" (term, enqueued_at, due_at)
+          VALUES ($1, $2, $3)
           RETURNING #{sql_fields()}
         """,
-        [serialized_term, now]
+        [serialized_term, now, due_at]
       )
 
     {:ok, from_sql(job)}
@@ -87,6 +88,7 @@ defmodule Rihanna.Job do
         id,
         serialized_term,
         enqueued_at,
+        due_at,
         failed_at,
         fail_reason
       ]) do
@@ -94,6 +96,7 @@ defmodule Rihanna.Job do
       id: id,
       term: :erlang.binary_to_term(serialized_term),
       enqueued_at: enqueued_at,
+      due_at: due_at,
       failed_at: failed_at,
       fail_reason: fail_reason
     }
@@ -207,7 +210,7 @@ defmodule Rihanna.Job do
           ) AS t1
         )
       )
-      SELECT id, term, enqueued_at, failed_at, fail_reason
+      SELECT id, term, enqueued_at, due_at, failed_at, fail_reason
       FROM jobs
       WHERE locked
       LIMIT $2

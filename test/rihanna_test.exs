@@ -10,12 +10,13 @@ defmodule RihannaTest do
 
   @term {IO, :puts, ["Work, work, work, work, work."]}
 
-  describe "enqueue/1 with mfa" do
+  describe "`enqueue/1` with mfa" do
     test "returns the job struct" do
       {:ok, job} = Rihanna.enqueue(@term)
 
       assert %Rihanna.Job{} = job
       assert %DateTime{} = job.enqueued_at
+      assert job.due_at |> is_nil
       assert job.fail_reason |> is_nil
       assert job.failed_at |> is_nil
       assert job.term == @term
@@ -28,6 +29,7 @@ defmodule RihannaTest do
 
       assert %Rihanna.Job{} = job
       assert %DateTime{} = job.enqueued_at
+      assert job.due_at |> is_nil
       assert job.fail_reason |> is_nil
       assert job.failed_at |> is_nil
       assert job.term == @term
@@ -53,12 +55,13 @@ defmodule RihannaTest do
     end
   end
 
-  describe "enqueue/1 with module and arg" do
+  describe "`enqueue/2` with module and arg" do
     test "returns the job struct" do
       {:ok, job} = Rihanna.enqueue(MockJob, :arg)
 
       assert %Rihanna.Job{} = job
       assert %DateTime{} = job.enqueued_at
+      assert job.due_at |> is_nil
       assert job.fail_reason |> is_nil
       assert job.failed_at |> is_nil
       assert job.term == {Rihanna.Mocks.MockJob, :arg}
@@ -71,6 +74,7 @@ defmodule RihannaTest do
 
       assert %Rihanna.Job{} = job
       assert %DateTime{} = job.enqueued_at
+      assert job.due_at |> is_nil
       assert job.fail_reason |> is_nil
       assert job.failed_at |> is_nil
       assert job.term == {Rihanna.Mocks.MockJob, :arg}
