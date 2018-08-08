@@ -32,7 +32,7 @@ defmodule Rihanna do
 
   You can schedule jobs for deferred execution using `schedule/2` and
   `schedule/3`. Jobs scheduled for later execution will run after the due at
-  date but there is no guarantee on exectly when the job will run.
+  date, but there is no guarantee on exactly when they will run.
 
   """
 
@@ -113,7 +113,7 @@ defmodule Rihanna do
   Rihanna.schedule({IO, :puts, ["Hello"]}, in: :timer.hours(1))
   """
 
-  @type schedule_option :: {:at, DateTime.t()} | {:on, pos_integer}
+  @type schedule_option :: {:at, DateTime.t()} | {:in, pos_integer}
   @type schedule_options :: [schedule_option]
 
   @doc """
@@ -121,12 +121,15 @@ defmodule Rihanna do
 
   ## Example
 
-      # Schedule after a date/time
+  Schedule at a `DateTime`:
+
       due_at = DateTime.from_naive!(~N[2018-07-01 12:00:00], "Etc/UTC")
       Rihanna.schedule({IO, :puts, ["Umbrella-ella-ella"]}, at: due_at)
 
-      # Schedule in 5 minutes
+  Schedule in 5 minutes:
+
       Rihanna.schedule({IO, :puts, ["Umbrella-ella-ella"]}, in: :timer.minutes(5))
+
   """
   @spec schedule({module, atom, list()}, schedule_options) :: {:ok, Rihanna.Job.t()}
   def schedule(term = {mod, fun, args}, schedule_options)
@@ -150,11 +153,13 @@ defmodule Rihanna do
 
   ## Example
 
-      # Schedule after a date/time
+  Schedule at a `DateTime`:
+
       due_at = DateTime.from_naive!(~N[2018-07-01 12:00:00], "Etc/UTC")
       Rihanna.schedule(MyApp.MyJob, [arg1, arg2], at: due_at)
 
-      # Schedule in 5 minutes
+  Schedule in 5 minutes:
+
       Rihanna.schedule(MyApp.MyJob, [arg1, arg2], in: :timer.minutes(5))
 
   """
