@@ -82,6 +82,24 @@ defmodule TestHelper do
     job
   end
 
+  # Insert a job scheduled for one minute in the future.
+  def insert_job(pg, :scheduled_at) do
+    result =
+      Postgrex.query!(
+        pg,
+        """
+          INSERT INTO "rihanna_jobs" (term, enqueued_at, due_at)
+          VALUES ($1, '2018-01-01', NOW() + interval '1 minute')
+          RETURNING *
+        """,
+        [:erlang.term_to_binary(@test_term)]
+      )
+
+    [job] = Rihanna.Job.from_sql(result.rows)
+
+    job
+  end
+
   def insert_job(pg, :failed) do
     result =
       Postgrex.query!(

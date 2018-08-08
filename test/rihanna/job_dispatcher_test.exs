@@ -303,6 +303,17 @@ defmodule Rihanna.JobDispatcherTest do
     end
   end
 
+  describe "handle_info(:poll, state) with one scheduled job not yet due" do
+    test "does not retrieve the job", %{pg: pg} do
+      insert_job(pg, :scheduled_at)
+
+      assert {:noreply, state} = JobDispatcher.handle_info(:poll, initial_state(pg))
+
+      assert state.pg == pg
+      assert map_size(state.working) == 0
+    end
+  end
+
   describe "dispatcher when job takes longer than poll interval" do
     setup do
       {:ok, dispatcher} =

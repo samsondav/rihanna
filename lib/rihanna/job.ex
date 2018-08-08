@@ -186,6 +186,7 @@ defmodule Rihanna.Job do
           SELECT j
           FROM #{table} AS j
           WHERE NOT (id = ANY($3))
+          AND (due_at IS NULL OR due_at <= now())
           AND failed_at IS NULL
           ORDER BY enqueued_at, j.id
           FOR UPDATE OF j SKIP LOCKED
@@ -198,6 +199,7 @@ defmodule Rihanna.Job do
               SELECT j
               FROM #{table} AS j
               WHERE NOT (id = ANY($3))
+              AND (due_at IS NULL OR due_at <= now())
               AND failed_at IS NULL
               AND (j.enqueued_at, j.id) > (jobs.enqueued_at, jobs.id)
               ORDER BY enqueued_at, j.id
