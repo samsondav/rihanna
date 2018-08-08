@@ -44,7 +44,7 @@ defmodule Rihanna.Supervisor do
         """
 
       db ->
-        db = Keyword.take(db, [:username, :password, :database, :hostname, :port])
+        db = Keyword.take(db, [:username, :password, :database, :hostname, :port, :ssl])
         Supervisor.start_link(__MODULE__, {db, config}, opts)
     end
   end
