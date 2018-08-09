@@ -42,7 +42,7 @@ defmodule Rihanna.Migration.Upgrade do
 
       def down do
         execute("""
-        ALTER TABLE #{unquote(table_name)} DROP COLUMN IF EXISTS due_at;
+        ALTER TABLE #{unquote(table_name)} DROP COLUMN due_at;
         """)
       end
     end
@@ -71,7 +71,7 @@ defmodule Rihanna.Migration.Upgrade do
       when is_binary(table_name) or is_atom(table_name) do
     [
       """
-      ALTER TABLE #{table_name} ADD COLUMN IF NOT EXISTS due_at timestamp with time zone;
+      ALTER TABLE #{table_name} ADD COLUMN due_at timestamp with time zone;
       """
     ]
   end
