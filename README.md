@@ -139,6 +139,10 @@ children = [
 Rihanna should work out of the box without any configuration. However, should you
 wish to tweak it, take a look at the documentation for [Rihanna.Config](https://hexdocs.pm/rihanna/Rihanna.Config.html).
 
+## Upgrading
+
+Please refer to the [Changelog](CHANGELOG.md) for details on when a database upgrade is required and how to migrate the Rihanna jobs table.
+
 ## FAQs
 
 **Q: What does the supervision tree look like/how does Rihanna work?**

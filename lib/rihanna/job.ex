@@ -42,6 +42,19 @@ defmodule Rihanna.Job do
 
   """
 
+  @upgrade_help_message """
+  The Rihanna jobs table must be upgraded.
+
+  The easiest way to upgrade the database is with Ecto.
+
+  Run `mix ecto.gen.migration upgrade_rihanna_jobs` and make your migration look
+  like this:
+
+      defmodule MyApp.UpgradeRihannaJobs do
+        use Rihanna.Migration.Upgrade
+      end
+  """
+
   @fields [
     :id,
     :term,
@@ -64,8 +77,8 @@ defmodule Rihanna.Job do
 
     now = DateTime.utc_now()
 
-    %{rows: [job]} =
-      Postgrex.query!(
+    result =
+      Postgrex.query(
         Rihanna.Job.Postgrex,
         """
           INSERT INTO "#{table()}" (term, enqueued_at, due_at)
@@ -75,7 +88,18 @@ defmodule Rihanna.Job do
         [serialized_term, now, due_at]
       )
 
-    {:ok, from_sql(job)}
+    case result do
+      {:ok, %Postgrex.Result{rows: [job]}} ->
+        {:ok, from_sql(job)}
+
+      {:error, %Postgrex.Error{postgres: %{pg_code: "42703"}}} ->
+        # Undefined column error (e.g. `due_at` missing), warn user to upgrade
+        # their Rihanna jobs table
+        raise ArgumentError, @upgrade_help_message
+
+      {:error, err} ->
+        raise err
+    end
   end
 
   @doc false
