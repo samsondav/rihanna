@@ -31,8 +31,8 @@ defmodule Rihanna do
   ## Scheduling
 
   You can schedule jobs for deferred execution using `schedule/2` and
-  `schedule/3`. Jobs scheduled for later execution will run after the due at
-  date, but there is no guarantee on exactly when they will run.
+  `schedule/3`. Jobs scheduled for later execution will run shortly after the
+  due at date, but there is no guarantee on exactly when they will run.
 
   """
 
@@ -123,7 +123,7 @@ defmodule Rihanna do
 
   Schedule at a `DateTime`:
 
-      due_at = DateTime.from_naive!(~N[2018-07-01 12:00:00], "Etc/UTC")
+      due_at = ~N[2018-07-01 12:00:00] |> DateTime.from_naive!("Etc/UTC")
       Rihanna.schedule({IO, :puts, ["Umbrella-ella-ella"]}, at: due_at)
 
   Schedule in 5 minutes:
