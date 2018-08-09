@@ -38,7 +38,7 @@ defmodule TestHelper do
     Postgrex.query!(
       ctx.pg,
       """
-      TRUNCATE "rihanna_jobs
+      TRUNCATE "rihanna_jobs"
       """,
       []
     )
