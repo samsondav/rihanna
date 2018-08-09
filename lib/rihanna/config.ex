@@ -14,6 +14,10 @@ defmodule Rihanna.Config do
 
   @doc """
   The table name to use for Rihanna jobs.
+
+  ```
+  config :rihanna, jobs_table_name: "my_jobs"
+  ```
   """
   def jobs_table_name() do
     Application.get_env(:rihanna, :jobs_table_name, "rihanna_jobs")
