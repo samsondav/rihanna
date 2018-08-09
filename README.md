@@ -28,7 +28,7 @@ There are two ways to use Rihanna. The simplest way is to pass a mod-fun-args tu
 Rihanna.enqueue({MyModule, :my_fun, [arg1, arg2]})
 ```
 
-The second way is to implement the `Rihanna.Job` behaviour and define the `perform/1` function. Implementing this behaviour allows you to define retry strategies, show custom error messages on failure etc. See [the docs](addlink) for more details.
+The second way is to implement the `Rihanna.Job` behaviour and define the `perform/1` function. Implementing this behaviour allows you to define retry strategies, show custom error messages on failure etc. See [the docs](https://hexdocs.pm/rihanna/Rihanna.Job.html) for more details.
 
 ```elixir
 defmodule MyApp.MyJob do
