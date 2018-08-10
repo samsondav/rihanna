@@ -139,12 +139,18 @@ defmodule Rihanna.Migration do
   @doc false
   # Check that the rihanna jobs table exists
   def check_table!(pg) do
-    case Postgrex.query(pg, "SELECT to_regclass($1);", [Rihanna.Job.table()]) do
-      {:ok, %{rows: [[nil]]}} ->
-        raise_jobs_table_missing!()
-
-      {:ok, %{rows: [[_regclass]]}} ->
+    case Postgrex.query(
+           pg,
+           """
+             SELECT CASE to_regclass($1) WHEN NULL THEN false ELSE true END;
+           """,
+           [Rihanna.Job.table()]
+         ) do
+      {:ok, %{rows: [[true]]}} ->
         :ok
+
+      {:ok, %{rows: [[false]]}} ->
+        raise_jobs_table_missing!()
     end
   end
 
