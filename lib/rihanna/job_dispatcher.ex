@@ -19,6 +19,8 @@ defmodule Rihanna.JobDispatcher do
     # locks in the zombie pg process
     {:ok, pg} = Postgrex.start_link(db)
 
+    check_database!(pg)
+
     state = %{working: %{}, pg: pg}
 
     # Use a startup delay to avoid killing the supervisor if we can't connect
@@ -74,6 +76,11 @@ defmodule Rihanna.JobDispatcher do
     Rihanna.Job.mark_failed(pg, job.id, DateTime.utc_now(), Exception.format_exit(reason))
 
     {:noreply, Map.put(state, :working, working)}
+  end
+
+  defp check_database!(pg) do
+    Rihanna.Migration.check_table!(pg)
+    Rihanna.Migration.check_columns!(pg)
   end
 
   defp mark_failed(pg, %{id: id}, result) do
