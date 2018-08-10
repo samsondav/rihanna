@@ -86,7 +86,7 @@ defmodule Rihanna.Migration.Upgrade do
               END;
           END;
       $$
-      """,
+      """
     ]
   end
 

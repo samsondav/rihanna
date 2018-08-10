@@ -23,8 +23,14 @@ defmodule Rihanna.JobDispatcher do
 
     # Use a startup delay to avoid killing the supervisor if we can't connect
     # to the database for some reason.
-    Process.send_after(self(), :poll, @startup_delay)
+    Process.send_after(self(), :initialise, @startup_delay)
     {:ok, state}
+  end
+
+  def handle_info(:initialise, state = %{pg: pg}) do
+    check_database!(pg)
+    Process.send(self(), :poll, [])
+    {:noreply, state}
   end
 
   def handle_info(:poll, state = %{working: working, pg: pg}) do
@@ -74,6 +80,11 @@ defmodule Rihanna.JobDispatcher do
     Rihanna.Job.mark_failed(pg, job.id, DateTime.utc_now(), Exception.format_exit(reason))
 
     {:noreply, Map.put(state, :working, working)}
+  end
+
+  defp check_database!(pg) do
+    Rihanna.Migration.check_table!(pg)
+    Rihanna.Migration.check_columns!(pg)
   end
 
   defp mark_failed(pg, %{id: id}, result) do

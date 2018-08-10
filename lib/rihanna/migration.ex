@@ -117,4 +117,92 @@ defmodule Rihanna.Migration do
   def sql(table_name \\ Rihanna.Config.jobs_table_name()) do
     Enum.join(statements(table_name), "\n")
   end
+
+  @migrate_help_message """
+  The Rihanna jobs table must be created.
+
+  Rihanna stores jobs in a table in your database.
+  The default table name is "rihanna_jobs".
+
+  The easiest way to create the database is with Ecto.
+
+  Run `mix ecto.gen.migration create_rihanna_jobs` and make your migration look
+  like this:
+
+      defmodule MyApp.CreateRihannaJobs do
+        use Rihanna.Migration
+      end
+
+  Now you can run `mix ecto.migrate`.
+  """
+
+  @doc false
+  # Check that the rihanna jobs table exists
+  def check_table!(pg) do
+    case Postgrex.query(
+           pg,
+           """
+           SELECT EXISTS (
+             SELECT 1
+             FROM information_schema.tables
+             WHERE table_name = $1
+           );
+           """,
+           [Rihanna.Job.table()]
+         ) do
+      {:ok, %{rows: [[true]]}} ->
+        :ok
+
+      {:ok, %{rows: [[false]]}} ->
+        raise_jobs_table_missing!()
+    end
+  end
+
+  @doc false
+  def raise_jobs_table_missing!() do
+    raise ArgumentError, @migrate_help_message
+  end
+
+  @upgrade_help_message """
+  The Rihanna jobs table must be upgraded.
+
+  The easiest way to upgrade the database is with Ecto.
+
+  Run `mix ecto.gen.migration upgrade_rihanna_jobs` and make your migration look
+  like this:
+
+      defmodule MyApp.UpgradeRihannaJobs do
+        use Rihanna.Migration.Upgrade
+      end
+
+  Now you can run `mix ecto.migrate`.
+  """
+
+  @doc false
+  # Check that the required upgrade columns have been added
+  def check_columns!(pg) do
+    required_upgrade_columns = ["due_at", "rihanna_internal_meta"]
+
+    case Postgrex.query(
+           pg,
+           """
+           SELECT column_name
+           FROM information_schema.columns
+           WHERE table_name = $1 and column_name = ANY($2);
+           """,
+           # Migration adds due_at, test if this is present
+           [Rihanna.Job.table(), required_upgrade_columns]
+         ) do
+      {:ok, %{rows: rows}} when length(rows) < length(required_upgrade_columns) ->
+        raise_upgrade_required!()
+
+      {:ok, %{rows: rows}} when length(rows) == length(required_upgrade_columns) ->
+        :ok
+    end
+  end
+
+  @doc false
+  def raise_upgrade_required!() do
+    raise ArgumentError, @upgrade_help_message
+  end
 end

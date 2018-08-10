@@ -43,39 +43,6 @@ defmodule Rihanna.Job do
 
   """
 
-  @migrate_help_message """
-  The Rihanna jobs table must be created.
-
-  Rihanna stores jobs in a table in your database.
-  The default table name is "rihanna_jobs".
-
-  The easiest way to create the database is with Ecto.
-
-  Run `mix ecto.gen.migration create_rihanna_jobs` and make your migration look
-  like this:
-
-      defmodule MyApp.CreateRihannaJobs do
-        use Rihanna.Migration
-      end
-
-  Now you can run `mix ecto.migrate`.
-  """
-
-  @upgrade_help_message """
-  The Rihanna jobs table must be upgraded.
-
-  The easiest way to upgrade the database is with Ecto.
-
-  Run `mix ecto.gen.migration upgrade_rihanna_jobs` and make your migration look
-  like this:
-
-      defmodule MyApp.UpgradeRihannaJobs do
-        use Rihanna.Migration.Upgrade
-      end
-
-  Now you can run `mix ecto.migrate`.
-  """
-
   @fields [
     :id,
     :term,
@@ -86,15 +53,16 @@ defmodule Rihanna.Job do
   ]
 
   defstruct @fields
+
   @sql_fields @fields
-    |> Enum.map(&to_string/1)
-    |> Enum.join(", ")
+              |> Enum.map(&to_string/1)
+              |> Enum.join(", ")
 
   @select_fields_for_recursive_lock_query @fields
-    |> Enum.map(fn field ->
-      "(j).#{field}"
-    end)
-    |> Enum.join(", ")
+                                          |> Enum.map(fn field ->
+                                            "(j).#{field}"
+                                          end)
+                                          |> Enum.join(", ")
 
   @doc false
   def start(job) do
@@ -125,12 +93,12 @@ defmodule Rihanna.Job do
       {:error, %Postgrex.Error{postgres: %{pg_code: "42P01"}}} ->
         # Undefined table error (e.g. `rihanna_jobs` table missing), warn user
         # to create their Rihanna jobs table
-        raise ArgumentError, @migrate_help_message
+        Rihanna.Migration.raise_jobs_table_missing!()
 
       {:error, %Postgrex.Error{postgres: %{pg_code: "42703"}}} ->
         # Undefined column error (e.g. `due_at` missing), warn user to upgrade
         # their Rihanna jobs table
-        raise ArgumentError, @upgrade_help_message
+        Rihanna.Migration.raise_upgrade_required!()
 
       {:error, err} ->
         raise err
