@@ -142,7 +142,11 @@ defmodule Rihanna.Migration do
     case Postgrex.query(
            pg,
            """
-             SELECT CASE to_regclass($1) WHEN NULL THEN false ELSE true END;
+           SELECT EXISTS (
+             SELECT 1
+             FROM information_schema.tables
+             WHERE table_name = $1
+           );
            """,
            [Rihanna.Job.table()]
          ) do
