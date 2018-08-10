@@ -55,7 +55,7 @@ defmodule TestHelper do
       Postgrex.query!(
         pg,
         """
-        SELECT * FROM "rihanna_jobs" WHERE id = $1
+        SELECT id, term, enqueued_at, due_at, failed_at, fail_reason FROM "rihanna_jobs" WHERE id = $1
         """,
         [id]
       )
@@ -75,7 +75,7 @@ defmodule TestHelper do
         """
           INSERT INTO "rihanna_jobs" (term, enqueued_at)
           VALUES ($1, '2018-01-01')
-          RETURNING *
+          RETURNING id, term, enqueued_at, due_at, failed_at, fail_reason
         """,
         [:erlang.term_to_binary(@test_term)]
       )
@@ -93,7 +93,7 @@ defmodule TestHelper do
         """
           INSERT INTO "rihanna_jobs" (term, enqueued_at, due_at)
           VALUES ($1, '2018-01-01', now() + interval '1 minute')
-          RETURNING *
+          RETURNING id, term, enqueued_at, due_at, failed_at, fail_reason
         """,
         [:erlang.term_to_binary(@test_term)]
       )
@@ -111,7 +111,7 @@ defmodule TestHelper do
         """
           INSERT INTO "rihanna_jobs" (term, enqueued_at, due_at)
           VALUES ($1, '2018-01-01', now())
-          RETURNING *
+          RETURNING id, term, enqueued_at, due_at, failed_at, fail_reason
         """,
         [:erlang.term_to_binary(@test_term)]
       )
@@ -133,7 +133,7 @@ defmodule TestHelper do
           fail_reason
         )
         VALUES ($1, '2018-01-01', '2018-01-02', 'Kaboom!')
-        RETURNING *
+        RETURNING id, term, enqueued_at, due_at, failed_at, fail_reason
         """,
         [:erlang.term_to_binary(@test_term)]
       )

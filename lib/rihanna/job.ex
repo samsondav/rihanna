@@ -86,6 +86,15 @@ defmodule Rihanna.Job do
   ]
 
   defstruct @fields
+  @sql_fields @fields
+    |> Enum.map(&to_string/1)
+    |> Enum.join(", ")
+
+  @select_fields_for_recursive_lock_query @fields
+    |> Enum.map(fn field ->
+      "(j).#{field}"
+    end)
+    |> Enum.join(", ")
 
   @doc false
   def start(job) do
@@ -104,7 +113,7 @@ defmodule Rihanna.Job do
         """
           INSERT INTO "#{table()}" (term, enqueued_at, due_at)
           VALUES ($1, $2, $3)
-          RETURNING #{sql_fields()}
+          RETURNING #{@sql_fields}
         """,
         [serialized_term, now, due_at]
       )
@@ -231,7 +240,7 @@ defmodule Rihanna.Job do
 
     lock_jobs = """
       WITH RECURSIVE jobs AS (
-        SELECT (j).*, pg_try_advisory_lock($1::integer, (j).id) AS locked
+        SELECT #{@select_fields_for_recursive_lock_query}, pg_try_advisory_lock($1::integer, (j).id) AS locked
         FROM (
           SELECT j
           FROM #{table} AS j
@@ -243,7 +252,7 @@ defmodule Rihanna.Job do
           LIMIT 1
         ) AS t1
         UNION ALL (
-          SELECT (j).*, pg_try_advisory_lock($1::integer, (j).id) AS locked
+          SELECT  #{@select_fields_for_recursive_lock_query}, pg_try_advisory_lock($1::integer, (j).id) AS locked
           FROM (
             SELECT (
               SELECT j
@@ -262,7 +271,7 @@ defmodule Rihanna.Job do
           ) AS t1
         )
       )
-      SELECT id, term, enqueued_at, due_at, failed_at, fail_reason
+      SELECT #{@sql_fields}
       FROM jobs
       WHERE locked
       LIMIT $2
@@ -333,11 +342,5 @@ defmodule Rihanna.Job do
         """,
         [classid(), job_id]
       )
-  end
-
-  defp sql_fields() do
-    @fields
-    |> Enum.map(&to_string/1)
-    |> Enum.join(", ")
   end
 end

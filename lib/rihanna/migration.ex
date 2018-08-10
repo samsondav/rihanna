@@ -80,6 +80,7 @@ defmodule Rihanna.Migration do
         due_at timestamp with time zone,
         failed_at timestamp with time zone,
         fail_reason text,
+        rihanna_internal_meta jsonb NOT NULL DEFAULT '{}',
         CONSTRAINT failed_at_required_fail_reason CHECK((failed_at IS NOT NULL AND fail_reason IS NOT NULL) OR (failed_at IS NULL and fail_reason IS NULL))
       );
       """,

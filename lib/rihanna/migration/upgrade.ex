@@ -43,6 +43,7 @@ defmodule Rihanna.Migration.Upgrade do
       def down do
         execute("""
         ALTER TABLE #{unquote(table_name)} DROP COLUMN due_at;
+        ALTER TABLE #{unquote(table_name)} DROP COLUMN rihanna_internal_meta;
         """)
       end
     end
@@ -78,13 +79,14 @@ defmodule Rihanna.Migration.Upgrade do
           BEGIN
               BEGIN
                   ALTER TABLE #{table_name} ADD COLUMN due_at timestamp with time zone;
+                  ALTER TABLE #{table_name} ADD COLUMN rihanna_internal_meta jsonb NOT NULL DEFAULT '{}';
               EXCEPTION
                   WHEN duplicate_column THEN
-                  RAISE NOTICE 'column due_at already exists in #{table_name}.';
+                  RAISE NOTICE 'column already exists in #{table_name}.';
               END;
           END;
       $$
-      """
+      """,
     ]
   end
 
