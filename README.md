@@ -24,7 +24,7 @@ Rihanna requires Elixir >= 1.5 and Postgres >= 9.5
 There are two ways to use Rihanna. The simplest way is to pass a mod-fun-args tuple like so:
 
 ```elixir
-# schedule job for later execution and return immediately
+# Enqueue job for later execution and return immediately
 Rihanna.enqueue({MyModule, :my_fun, [arg1, arg2]})
 ```
 
@@ -51,12 +51,33 @@ defmodule MyApp.MyJob do
 end
 ```
 
-Now you can schedule your jobs like so:
+Now you can enqueue your jobs like so:
 
 ```elixir
-# schedule job for later execution and return immediately
+# Enqueue job for later execution and return immediately
 Rihanna.enqueue(MyApp.MyJob, [arg1, arg2])
 ```
+
+### Job scheduling
+
+You can schedule jobs for deferred execution using `schedule/2` and `schedule/3`.
+
+Schedule at a `DateTime`:
+
+```elixir
+Rihanna.schedule(
+  {IO, :puts, ["Hello"]},
+  at: DateTime.from_naive!(~N[2018-07-01 12:00:00], "Etc/UTC")
+)
+```
+
+Schedule in one hour:
+
+```elixir
+Rihanna.schedule({IO, :puts, ["Hello"]}, in: :timer.hours(1))
+```
+
+Jobs scheduled for later execution will run _after_ their scheduled date, but there is no guarantee they will run at exactly their due date as this will depend on your configured poll interval and what other jobs are being processed.
 
 ## Installation
 
@@ -118,6 +139,10 @@ children = [
 Rihanna should work out of the box without any configuration. However, should you
 wish to tweak it, take a look at the documentation for [Rihanna.Config](https://hexdocs.pm/rihanna/Rihanna.Config.html).
 
+## Upgrading
+
+Please refer to the [Changelog](CHANGELOG.md) for details on when a database upgrade is required and how to migrate the Rihanna jobs table.
+
 ## FAQs
 
 **Q: What does the supervision tree look like/how does Rihanna work?**
@@ -162,7 +187,7 @@ I have seen it do around 1.5k jobs per second on a mid-2016 Macbook Pro. Signifi
 
 More detailed benchmarks to come. For now see: [https://github.com/chanks/queue-shootout](https://github.com/chanks/queue-shootout).
 
-**Q. Does it support multiple queues/scheduling/cron tasks?**
+**Q. Does it support multiple queues/cron tasks?**
 
 Not yet, but it will.
 
@@ -181,4 +206,3 @@ If you really want to turn this behaviour off, you can set the `behaviour_only` 
 **Q. Why Rihanna?**
 
 Because she knows how to [work, work, work, work, work](https://youtu.be/HL1UzIK-flA?t=18s).
-

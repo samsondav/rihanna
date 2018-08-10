@@ -39,13 +39,48 @@ defmodule Rihanna.Job do
       end
     end
   end
+  ```
 
+  """
+
+  @migrate_help_message """
+  The Rihanna jobs table must be created.
+
+  Rihanna stores jobs in a table in your database.
+  The default table name is "rihanna_jobs".
+
+  The easiest way to create the database is with Ecto.
+
+  Run `mix ecto.gen.migration create_rihanna_jobs` and make your migration look
+  like this:
+
+      defmodule MyApp.CreateRihannaJobs do
+        use Rihanna.Migration
+      end
+
+  Now you can run `mix ecto.migrate`.
+  """
+
+  @upgrade_help_message """
+  The Rihanna jobs table must be upgraded.
+
+  The easiest way to upgrade the database is with Ecto.
+
+  Run `mix ecto.gen.migration upgrade_rihanna_jobs` and make your migration look
+  like this:
+
+      defmodule MyApp.UpgradeRihannaJobs do
+        use Rihanna.Migration.Upgrade
+      end
+
+  Now you can run `mix ecto.migrate`.
   """
 
   @fields [
     :id,
     :term,
     :enqueued_at,
+    :due_at,
     :failed_at,
     :fail_reason
   ]
@@ -58,23 +93,39 @@ defmodule Rihanna.Job do
   end
 
   @doc false
-  def enqueue(term) do
+  def enqueue(term, due_at \\ nil) do
     serialized_term = :erlang.term_to_binary(term)
 
     now = DateTime.utc_now()
 
-    %{rows: [job]} =
-      Postgrex.query!(
+    result =
+      Postgrex.query(
         Rihanna.Job.Postgrex,
         """
-          INSERT INTO "#{table()}" (term, enqueued_at)
-          VALUES ($1, $2)
+          INSERT INTO "#{table()}" (term, enqueued_at, due_at)
+          VALUES ($1, $2, $3)
           RETURNING #{sql_fields()}
         """,
-        [serialized_term, now]
+        [serialized_term, now, due_at]
       )
 
-    {:ok, from_sql(job)}
+    case result do
+      {:ok, %Postgrex.Result{rows: [job]}} ->
+        {:ok, from_sql(job)}
+
+      {:error, %Postgrex.Error{postgres: %{pg_code: "42P01"}}} ->
+        # Undefined table error (e.g. `rihanna_jobs` table missing), warn user
+        # to create their Rihanna jobs table
+        raise ArgumentError, @migrate_help_message
+
+      {:error, %Postgrex.Error{postgres: %{pg_code: "42703"}}} ->
+        # Undefined column error (e.g. `due_at` missing), warn user to upgrade
+        # their Rihanna jobs table
+        raise ArgumentError, @upgrade_help_message
+
+      {:error, err} ->
+        raise err
+    end
   end
 
   @doc false
@@ -87,6 +138,7 @@ defmodule Rihanna.Job do
         id,
         serialized_term,
         enqueued_at,
+        due_at,
         failed_at,
         fail_reason
       ]) do
@@ -94,6 +146,7 @@ defmodule Rihanna.Job do
       id: id,
       term: :erlang.binary_to_term(serialized_term),
       enqueued_at: enqueued_at,
+      due_at: due_at,
       failed_at: failed_at,
       fail_reason: fail_reason
     }
@@ -183,6 +236,7 @@ defmodule Rihanna.Job do
           SELECT j
           FROM #{table} AS j
           WHERE NOT (id = ANY($3))
+          AND (due_at IS NULL OR due_at <= now())
           AND failed_at IS NULL
           ORDER BY enqueued_at, j.id
           FOR UPDATE OF j SKIP LOCKED
@@ -195,6 +249,7 @@ defmodule Rihanna.Job do
               SELECT j
               FROM #{table} AS j
               WHERE NOT (id = ANY($3))
+              AND (due_at IS NULL OR due_at <= now())
               AND failed_at IS NULL
               AND (j.enqueued_at, j.id) > (jobs.enqueued_at, jobs.id)
               ORDER BY enqueued_at, j.id
@@ -207,7 +262,7 @@ defmodule Rihanna.Job do
           ) AS t1
         )
       )
-      SELECT id, term, enqueued_at, failed_at, fail_reason
+      SELECT id, term, enqueued_at, due_at, failed_at, fail_reason
       FROM jobs
       WHERE locked
       LIMIT $2

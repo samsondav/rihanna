@@ -10,7 +10,10 @@ defmodule Rihanna.Migration do
 
   #### Using Ecto
 
-  The easiest way to create the database is with Ecto. Run `mix ecto.gen.migration create_rihanna_jobs` and make your migration look like this:
+  The easiest way to create the database is with Ecto.
+
+  Run `mix ecto.gen.migration create_rihanna_jobs` and make your migration file
+  look like this:
 
   ```elixir
   defmodule MyApp.CreateRihannaJobs do
@@ -22,7 +25,9 @@ defmodule Rihanna.Migration do
 
   #### Without Ecto
 
-  Ecto is not required to run Rihanna. If you want to create the table yourself, without Ecto, take a look at either `statements/0` or `sql/0`.
+  Ecto is not required to run Rihanna. If you want to create the table yourself,
+  without Ecto, take a look at either `statements/0` or `sql/0`.
+
   """
 
   defmacro __using__(opts) do
@@ -31,13 +36,13 @@ defmodule Rihanna.Migration do
     quote do
       use Ecto.Migration
 
-      def up() do
+      def up do
         Enum.each(Rihanna.Migration.statements(unquote(table_name)), fn statement ->
           execute(statement)
         end)
       end
 
-      def down() do
+      def down do
         execute("""
         DROP TABLE(#{unquote(table_name)});
         """)
@@ -72,6 +77,7 @@ defmodule Rihanna.Migration do
         id int NOT NULL,
         term bytea NOT NULL,
         enqueued_at timestamp with time zone NOT NULL,
+        due_at timestamp with time zone,
         failed_at timestamp with time zone,
         fail_reason text,
         CONSTRAINT failed_at_required_fail_reason CHECK((failed_at IS NOT NULL AND fail_reason IS NOT NULL) OR (failed_at IS NULL and fail_reason IS NULL))

@@ -303,6 +303,66 @@ defmodule Rihanna.JobDispatcherTest do
     end
   end
 
+  describe "handle_info(:poll, state) with one scheduled job not yet due" do
+    test "does not retrieve the job", %{pg: pg} do
+      insert_job(pg, :scheduled_at)
+
+      assert {:noreply, state} = JobDispatcher.handle_info(:poll, initial_state(pg))
+
+      assert state.pg == pg
+      assert map_size(state.working) == 0
+    end
+  end
+
+  describe "handle_info(:poll, state) with one scheduled job now due" do
+    test "retrieves the job and puts it into the state", %{pg: pg} do
+      job = insert_job(pg, :schedule_due)
+
+      assert {:noreply, state} = JobDispatcher.handle_info(:poll, initial_state(pg))
+
+      assert_unordered_list_equality(Map.keys(state), [:working, :pg])
+      assert state.pg == pg
+
+      working = state.working
+
+      assert map_size(working) == 1
+      assert is_reference(hd(Map.keys(working)))
+      assert hd(Map.values(working)) == job
+    end
+  end
+
+  describe "handle_info(:poll, state) with one historical scheduled job" do
+    test "retrieves the job and puts it into the state", %{pg: pg} do
+      past = DateTime.from_naive!(~N[2018-08-01 12:00:00], "Etc/UTC")
+      _job = Rihanna.Job.enqueue({MFAMock, :fun, [self(), "job-historical"]}, past)
+
+      JobDispatcher.handle_info(:poll, initial_state(pg))
+
+      assert_receive {"job-historical", _}
+    end
+  end
+
+  describe "handle_info(:poll, state) with one available job and two scheduled jobs now due" do
+    setup do
+      Application.put_env(:rihanna, :dispatcher_max_concurrency, 2)
+      :ok
+    end
+
+    test "executes up to dispatcher_max_concurrency() jobs", %{pg: pg} do
+      now = DateTime.utc_now()
+
+      _job = Rihanna.Job.enqueue({MFAMock, :fun, [self(), "job-enqueue"]})
+      _job = Rihanna.Job.enqueue({MFAMock, :fun, [self(), "job-schedule-1"]}, now)
+      _job = Rihanna.Job.enqueue({MFAMock, :fun, [self(), "job-schedule-2"]}, now)
+
+      JobDispatcher.handle_info(:poll, initial_state(pg))
+
+      assert_receive {"job-enqueue", _}
+      assert_receive {"job-schedule-1", _}
+      refute_receive {"job-schedule-2", _}
+    end
+  end
+
   describe "dispatcher when job takes longer than poll interval" do
     setup do
       {:ok, dispatcher} =

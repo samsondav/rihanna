@@ -6,16 +6,17 @@ defmodule RihannaTest do
   import TestHelper
   alias Rihanna.Mocks.MockJob
 
-  setup_all [:create_jobs_table]
-
   @term {IO, :puts, ["Work, work, work, work, work."]}
 
-  describe "enqueue/1 with mfa" do
+  describe "`enqueue/1` with mfa" do
+    setup [:create_jobs_table]
+
     test "returns the job struct" do
       {:ok, job} = Rihanna.enqueue(@term)
 
       assert %Rihanna.Job{} = job
       assert %DateTime{} = job.enqueued_at
+      assert job.due_at |> is_nil
       assert job.fail_reason |> is_nil
       assert job.failed_at |> is_nil
       assert job.term == @term
@@ -28,6 +29,7 @@ defmodule RihannaTest do
 
       assert %Rihanna.Job{} = job
       assert %DateTime{} = job.enqueued_at
+      assert job.due_at |> is_nil
       assert job.fail_reason |> is_nil
       assert job.failed_at |> is_nil
       assert job.term == @term
@@ -53,12 +55,15 @@ defmodule RihannaTest do
     end
   end
 
-  describe "enqueue/1 with module and arg" do
+  describe "`enqueue/2` with module and arg" do
+    setup [:create_jobs_table]
+
     test "returns the job struct" do
       {:ok, job} = Rihanna.enqueue(MockJob, :arg)
 
       assert %Rihanna.Job{} = job
       assert %DateTime{} = job.enqueued_at
+      assert job.due_at |> is_nil
       assert job.fail_reason |> is_nil
       assert job.failed_at |> is_nil
       assert job.term == {Rihanna.Mocks.MockJob, :arg}
@@ -71,6 +76,7 @@ defmodule RihannaTest do
 
       assert %Rihanna.Job{} = job
       assert %DateTime{} = job.enqueued_at
+      assert job.due_at |> is_nil
       assert job.fail_reason |> is_nil
       assert job.failed_at |> is_nil
       assert job.term == {Rihanna.Mocks.MockJob, :arg}
@@ -92,6 +98,22 @@ defmodule RihannaTest do
 
       assert_raise ArgumentError, expected_message, fn ->
         enqueue("not a module", :arg)
+      end
+    end
+  end
+
+  describe "without a Rihanna jobs table" do
+    setup [:drop_jobs_table]
+
+    test "warn when `Rihanna.enqueue` used" do
+      assert_raise ArgumentError, ~r/^The Rihanna jobs table must be created./, fn ->
+        Rihanna.enqueue(@term)
+      end
+    end
+
+    test "warn when `Rihanna.schedule` used" do
+      assert_raise ArgumentError, ~r/^The Rihanna jobs table must be created./, fn ->
+        Rihanna.schedule(@term, at: DateTime.utc_now())
       end
     end
   end
