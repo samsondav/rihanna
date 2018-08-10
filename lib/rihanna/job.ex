@@ -53,15 +53,16 @@ defmodule Rihanna.Job do
   ]
 
   defstruct @fields
+
   @sql_fields @fields
-    |> Enum.map(&to_string/1)
-    |> Enum.join(", ")
+              |> Enum.map(&to_string/1)
+              |> Enum.join(", ")
 
   @select_fields_for_recursive_lock_query @fields
-    |> Enum.map(fn field ->
-      "(j).#{field}"
-    end)
-    |> Enum.join(", ")
+                                          |> Enum.map(fn field ->
+                                            "(j).#{field}"
+                                          end)
+                                          |> Enum.join(", ")
 
   @doc false
   def start(job) do
@@ -92,12 +93,12 @@ defmodule Rihanna.Job do
       {:error, %Postgrex.Error{postgres: %{pg_code: "42P01"}}} ->
         # Undefined table error (e.g. `rihanna_jobs` table missing), warn user
         # to create their Rihanna jobs table
-        Rihanna.Migration.raise_jobs_table_missing!
+        Rihanna.Migration.raise_jobs_table_missing!()
 
       {:error, %Postgrex.Error{postgres: %{pg_code: "42703"}}} ->
         # Undefined column error (e.g. `due_at` missing), warn user to upgrade
         # their Rihanna jobs table
-        raise Rihanna.Migration.raise_upgrade_required!()
+        Rihanna.Migration.raise_upgrade_required!()
 
       {:error, err} ->
         raise err

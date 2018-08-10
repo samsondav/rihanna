@@ -142,6 +142,7 @@ defmodule Rihanna.Migration do
     case Postgrex.query(pg, "SELECT to_regclass($1);", [Rihanna.Job.table()]) do
       {:ok, %{rows: [[nil]]}} ->
         raise_jobs_table_missing!()
+
       {:ok, %{rows: [[_regclass]]}} ->
         :ok
     end
@@ -171,17 +172,20 @@ defmodule Rihanna.Migration do
   # Check that the required upgrade columns have been added
   def check_columns!(pg) do
     required_upgrade_columns = ["due_at", "rihanna_internal_meta"]
+
     case Postgrex.query(
-      pg,
-      """
-      SELECT column_name
-      FROM information_schema.columns
-      WHERE table_name = $1 and column_name = ANY($2);
-      """,
-      [Rihanna.Job.table(), required_upgrade_columns] # Migration adds due_at, test if this is present
-    ) do
+           pg,
+           """
+           SELECT column_name
+           FROM information_schema.columns
+           WHERE table_name = $1 and column_name = ANY($2);
+           """,
+           # Migration adds due_at, test if this is present
+           [Rihanna.Job.table(), required_upgrade_columns]
+         ) do
       {:ok, %{rows: rows}} when length(rows) < length(required_upgrade_columns) ->
         raise_upgrade_required!()
+
       {:ok, %{rows: rows}} when length(rows) == length(required_upgrade_columns) ->
         :ok
     end
