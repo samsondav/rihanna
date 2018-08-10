@@ -19,14 +19,18 @@ defmodule Rihanna.JobDispatcher do
     # locks in the zombie pg process
     {:ok, pg} = Postgrex.start_link(db)
 
-    check_database!(pg)
-
     state = %{working: %{}, pg: pg}
 
     # Use a startup delay to avoid killing the supervisor if we can't connect
     # to the database for some reason.
-    Process.send_after(self(), :poll, @startup_delay)
+    Process.send_after(self(), :initialise, @startup_delay)
     {:ok, state}
+  end
+
+  def handle_info(:initialise, state = %{pg: pg}) do
+    check_database!(pg)
+    Process.send(self(), :poll, [])
+    {:noreply, state}
   end
 
   def handle_info(:poll, state = %{working: working, pg: pg}) do
