@@ -8,6 +8,16 @@ defmodule TestHelper do
   def create_jobs_table(_ctx) do
     {:ok, pg} = Postgrex.start_link(Application.fetch_env!(:rihanna, :postgrex))
 
+    drop_jobs_table(%{pg: pg})
+
+    create_sqls = Rihanna.Migration.statements()
+
+    for statement <- create_sqls, do: Postgrex.query!(pg, statement, [])
+
+    {:ok, %{pg: pg}}
+  end
+
+  def drop_jobs_table(%{pg: pg}) do
     drop_sqls = [
       """
       DROP TABLE IF EXISTS "rihanna_jobs";
@@ -17,12 +27,15 @@ defmodule TestHelper do
       """
     ]
 
-    create_sqls = Rihanna.Migration.statements()
-
     for statement <- drop_sqls, do: Postgrex.query!(pg, statement, [])
-    for statement <- create_sqls, do: Postgrex.query!(pg, statement, [])
 
     {:ok, %{pg: pg}}
+  end
+
+  def drop_jobs_table(_ctx) do
+    {:ok, pg} = Postgrex.start_link(Application.fetch_env!(:rihanna, :postgrex))
+
+    drop_jobs_table(%{pg: pg})
   end
 
   def truncate_postgres_jobs(ctx) do

@@ -39,7 +39,26 @@ defmodule Rihanna.Job do
       end
     end
   end
+  ```
 
+  """
+
+  @migrate_help_message """
+  The Rihanna jobs table must be created.
+
+  Rihanna stores jobs in a table in your database.
+  The default table name is "rihanna_jobs".
+
+  The easiest way to create the database is with Ecto.
+
+  Run `mix ecto.gen.migration create_rihanna_jobs` and make your migration look
+  like this:
+
+      defmodule MyApp.CreateRihannaJobs do
+        use Rihanna.Migration
+      end
+
+  Now you can run `mix ecto.migrate`.
   """
 
   @upgrade_help_message """
@@ -53,6 +72,8 @@ defmodule Rihanna.Job do
       defmodule MyApp.UpgradeRihannaJobs do
         use Rihanna.Migration.Upgrade
       end
+
+  Now you can run `mix ecto.migrate`.
   """
 
   @fields [
@@ -91,6 +112,11 @@ defmodule Rihanna.Job do
     case result do
       {:ok, %Postgrex.Result{rows: [job]}} ->
         {:ok, from_sql(job)}
+
+      {:error, %Postgrex.Error{postgres: %{pg_code: "42P01"}}} ->
+        # Undefined table error (e.g. `rihanna_jobs` table missing), warn user
+        # to create their Rihanna jobs table
+        raise ArgumentError, @migrate_help_message
 
       {:error, %Postgrex.Error{postgres: %{pg_code: "42703"}}} ->
         # Undefined column error (e.g. `due_at` missing), warn user to upgrade
