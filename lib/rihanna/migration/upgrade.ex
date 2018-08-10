@@ -70,8 +70,20 @@ defmodule Rihanna.Migration.Upgrade do
   def statements(table_name \\ Rihanna.Config.jobs_table_name())
       when is_binary(table_name) or is_atom(table_name) do
     [
+      # Postgres versions earlier than v9.6 do not suppport `IF EXISTS` predicates
+      # on alter table commands. For backwards compatibility we're using a try/catch
+      # approach to add the `due_at` column idempotently.
       """
-      ALTER TABLE #{table_name} ADD COLUMN due_at timestamp with time zone;
+      DO $$
+          BEGIN
+              BEGIN
+                  ALTER TABLE #{table_name} ADD COLUMN due_at timestamp with time zone;
+              EXCEPTION
+                  WHEN duplicate_column THEN
+                  RAISE NOTICE 'column due_at already exists in #{table_name}.';
+              END;
+          END;
+      $$
       """
     ]
   end
