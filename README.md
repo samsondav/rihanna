@@ -128,9 +128,19 @@ Rihanna requires a database configuration to be passed in under the `postgrex` k
 If you are already using Ecto you can avoid duplicating your DB config by pulling this out of your existing Repo using `My.Repo.config()`.
 
 ```elixir
+# Elixir 1.6+
 # NOTE: In Phoenix you would find this inside `lib/my_app/application.ex`
 children = [
   {Rihanna.Supervisor, [name: Rihanna.Supervisor, postgrex: My.Repo.config()]}
+]
+```
+
+```elixir
+# Elixir 1.5
+import Supervisor.Spec, warn: false
+
+children = [
+  supervisor(Rihanna.Supervisor, [name: Rihanna.Supervisor, postgrex: My.Repo.config()])
 ]
 ```
 
