@@ -17,7 +17,7 @@ You might consider using Rihanna if:
 
 ## Requirements
 
-Rihanna requires Elixir >= 1.5 and Postgres >= 9.5
+Rihanna requires Elixir >= 1.4 (OTP >= 18.0) and Postgres >= 9.5
 
 ## Usage
 
