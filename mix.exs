@@ -5,7 +5,7 @@ defmodule Rihanna.MixProject do
     [
       app: :rihanna,
       version: "0.7.2",
-      elixir: "~> 1.4",
+      elixir: "~> 1.5",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       package: package(),
@@ -35,7 +35,7 @@ defmodule Rihanna.MixProject do
     [
       {:postgrex, ">= 0.13.3"},
       # Development tools
-      {:benchee, "~> 0.13", only: :test},
+      {:benchee, ">= 0.13", only: :test},
       {:ex_doc, ">= 0.0.0", only: :dev, runtime: false},
       {:dialyxir, ">= 0.0.0", only: :dev, runtime: false},
       {:mix_test_watch, ">= 0.0.0", only: :dev, runtime: false}
