@@ -140,7 +140,7 @@ children = [
 import Supervisor.Spec, warn: false
 
 children = [
-  supervisor(Rihanna.Supervisor, [name: Rihanna.Supervisor, postgrex: My.Repo.config()])
+  supervisor(Rihanna.Supervisor, [[name: Rihanna.Supervisor, postgrex: My.Repo.config()]])
 ]
 ```
 
