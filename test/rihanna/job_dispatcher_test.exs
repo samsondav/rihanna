@@ -199,7 +199,7 @@ defmodule Rihanna.JobDispatcherTest do
       {:ok, %{id: id}} = Rihanna.Job.enqueue({ErrorTupleBehaviourMock, [self(), ref]})
       :timer.sleep(100)
       %Rihanna.Job{fail_reason: reason} = get_job_by_id(pg, id)
-      assert reason == "Job Failed\n{:error, \"failed for some reason\"}"
+      assert reason == "Job Failed\n{:error, %{message: \"failed for some reason\"}}"
     end
 
     test "removes task from state when returns {:error, reason}", %{dispatcher: dispatcher} do
@@ -216,12 +216,19 @@ defmodule Rihanna.JobDispatcherTest do
       assert is_pid(state.pg)
     end
 
+    test "runs the after_error callback on the job when it returns {:error, reason}" do
+      ref = make_ref()
+      {:ok, _} = Rihanna.Job.enqueue({ErrorTupleBehaviourMock, [self(), ref]})
+      :timer.sleep(100)
+      assert_received "After error callback"
+    end
+
     test "marks job as failed when returns :error", %{pg: pg} do
       ref = make_ref()
       {:ok, %{id: id}} = Rihanna.Job.enqueue({ErrorBehaviourMock, [self(), ref]})
       :timer.sleep(100)
       %Rihanna.Job{fail_reason: reason} = get_job_by_id(pg, id)
-      assert reason == "Job Failed\n{:error, \"failed for some reason\"}"
+      assert reason == "Job Failed\n:error"
     end
 
     test "removes task from state when returns :error", %{dispatcher: dispatcher} do
@@ -236,6 +243,13 @@ defmodule Rihanna.JobDispatcherTest do
 
       refute Enum.any?(state.working)
       assert is_pid(state.pg)
+    end
+
+    test "runs the after_error callback on the job when it returns :error" do
+      ref = make_ref()
+      {:ok, _} = Rihanna.Job.enqueue({ErrorBehaviourMock, [self(), ref]})
+      :timer.sleep(100)
+      assert_received "After error callback"
     end
   end
 
@@ -300,6 +314,12 @@ defmodule Rihanna.JobDispatcherTest do
 
       refute Enum.any?(state.working)
       assert is_pid(state.pg)
+    end
+
+    test "runs the after_error callback on a job queued using the behaviour when it raises an error" do
+      {:ok, %{id: _}} = Rihanna.Job.enqueue({BadMFAMock, [self(), :ok]})
+      :timer.sleep(100)
+      assert_received "After error callback"
     end
   end
 
@@ -378,6 +398,22 @@ defmodule Rihanna.JobDispatcherTest do
       :timer.sleep(600)
 
       assert Rihanna.Mocks.LongJob.Counter.get_count() == 1
+    end
+  end
+
+  describe "when a job doesn't define an after_error callback and there is an error" do
+    setup do
+      {:ok, dispatcher} =
+        Rihanna.JobDispatcher.start_link([db: Application.fetch_env!(:rihanna, :postgrex)], [])
+
+      {:ok, %{dispatcher: dispatcher}}
+    end
+
+    test "it doesn't run the after_error callback on the job when it returns :error" do
+      ref = make_ref()
+      {:ok, _} = Rihanna.Job.enqueue({ErrorBehaviourMockWithNoErrorCallback, [self(), ref]})
+      :timer.sleep(100)
+      refute_received "After error callback"
     end
   end
 end

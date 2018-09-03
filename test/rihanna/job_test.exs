@@ -2,6 +2,7 @@ defmodule Rihanna.JobTest do
   use ExUnit.Case, async: false
   import Rihanna.Job
   import TestHelper
+  doctest Rihanna.Job
 
   @class_id Rihanna.Config.pg_advisory_lock_class_id()
 

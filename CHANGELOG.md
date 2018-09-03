@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.0.0
+
+### Added
+
+- Added an optional callback per job which defines what to do when that job errors.
+
+  ```elixir
+  def after_error(failure_reason, args) do
+    notify_someone(__MODULE__, failure_reason, args)
+  end
+  ```
+
 ## v0.7.0
 
 ### Added

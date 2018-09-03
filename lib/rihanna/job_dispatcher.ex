@@ -58,10 +58,10 @@ defmodule Rihanna.JobDispatcher do
 
     case result do
       {:error, _} ->
-        mark_failed(pg, job, result)
+        job_failure(job, result, pg)
 
       :error ->
-        mark_failed(pg, job, result)
+        job_failure(job, result, pg)
 
       _ ->
         Rihanna.Job.mark_successful(pg, job.id)
@@ -74,26 +74,41 @@ defmodule Rihanna.JobDispatcher do
 
   def handle_info({:DOWN, ref, :process, _pid, reason}, state = %{pg: pg, working: working}) do
     {job, working} = Map.pop(working, ref)
-
-    # NOTE: Do we need to demonitor here?
-
-    Rihanna.Job.mark_failed(pg, job.id, DateTime.utc_now(), Exception.format_exit(reason))
-
+    job_raised(job, reason, pg)
     {:noreply, Map.put(state, :working, working)}
+  end
+
+  defp job_raised(%{id: id, term: {job_module, args}}, reason, pg) do
+    # NOTE: Do we need to demonitor here?
+    Rihanna.Job.after_error(job_module, reason, args)
+    Rihanna.Job.mark_failed(pg, id, DateTime.utc_now(), Exception.format_exit(reason))
+  end
+
+  defp job_raised(job, reason, pg) do
+    # NOTE: Do we need to demonitor here?
+    Rihanna.Job.mark_failed(pg, job.id, DateTime.utc_now(), Exception.format_exit(reason))
+  end
+
+  defp job_failure(%{id: id, term: {job_module, args}}, reason, pg) do
+    # NOTE: Do we need to demonitor here?
+    Rihanna.Job.after_error(job_module, reason, args)
+
+    Rihanna.Job.mark_failed(
+      pg,
+      id,
+      DateTime.utc_now(),
+      "Job Failed\n#{inspect(reason, limit: :infinity)}"
+    )
+  end
+
+  defp job_failure(job, reason, pg) do
+    # NOTE: Do we need to demonitor here?
+    Rihanna.Job.mark_failed(pg, job.id, DateTime.utc_now(), Exception.format_exit(reason))
   end
 
   defp check_database!(pg) do
     Rihanna.Migration.check_table!(pg)
     Rihanna.Migration.check_columns!(pg)
-  end
-
-  defp mark_failed(pg, %{id: id}, result) do
-    Rihanna.Job.mark_failed(
-      pg,
-      id,
-      DateTime.utc_now(),
-      "Job Failed\n#{inspect(result, limit: :infinity)}"
-    )
   end
 
   defp lock_jobs_for_execution(pg, working) do
