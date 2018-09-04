@@ -41,7 +41,11 @@ defmodule Rihanna.Mocks do
 
     def perform([pid, msg]) do
       Process.send(pid, {msg, self()}, [])
-      {:error, "failed for some reason"}
+      {:error, %{message: "failed for some reason"}}
+    end
+
+    def after_error({:error, _}, [pid, _]) do
+      Process.send(pid, "After error callback", [])
     end
   end
 
@@ -50,7 +54,11 @@ defmodule Rihanna.Mocks do
 
     def perform([pid, msg]) do
       Process.send(pid, {msg, self()}, [])
-      {:error, "failed for some reason"}
+      :error
+    end
+
+    def after_error(:error, [pid, _]) do
+      Process.send(pid, "After error callback", [])
     end
   end
 
@@ -66,6 +74,10 @@ defmodule Rihanna.Mocks do
     def perform(_) do
       raise "Kaboom!"
     end
+
+    def after_error(_reason, [pid, _]) do
+      Process.send(pid, "After error callback", [])
+    end
   end
 
   defmodule MockJob do
@@ -73,6 +85,15 @@ defmodule Rihanna.Mocks do
 
     def perform(arg) do
       {:ok, arg}
+    end
+  end
+
+  defmodule ErrorBehaviourMockWithNoErrorCallback do
+    @behaviour Rihanna.Job
+
+    def perform([pid, msg]) do
+      Process.send(pid, {msg, self()}, [])
+      :error
     end
   end
 end

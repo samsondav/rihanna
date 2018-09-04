@@ -6,6 +6,8 @@ defmodule Rihanna.Job do
   @type t :: %__MODULE__{}
 
   @callback perform(arg :: any) :: :ok | {:ok, result} | :error | {:error, reason}
+  @callback after_error({:error, reason} | :error | Exception.t()) :: any()
+  @optional_callbacks after_error: 1
 
   @moduledoc """
   A behaviour for Rihanna jobs.
@@ -38,6 +40,21 @@ defmodule Rihanna.Job do
         {:error, :failed}
       end
     end
+  end
+  ```
+
+  This behaviour allows you to tailor what you'd like to happen after your
+  job either fails, or raises an exception.
+
+  You can define an `after_error/2` method which will run before the job is
+  placed on the failed job queue.
+
+  If you don't define this callback, it will add it to the failed job queue
+  without running anything.
+
+  ```
+  def after_error(failure_reason, args) do
+    notify_someone(__MODULE__, failure_reason, args)
   end
   ```
 
@@ -310,5 +327,14 @@ defmodule Rihanna.Job do
         """,
         [classid(), job_id]
       )
+  end
+
+  @doc """
+  Checks whether a job implemented the `after_error` callback and runs it if it
+  does.
+  """
+  def after_error(job_module, reason, args) do
+    if :erlang.function_exported(job_module, :after_error, 2),
+      do: job_module.after_error(reason, args)
   end
 end
