@@ -8,6 +8,7 @@ defmodule Rihanna.MixProject do
       elixir: "~> 1.5",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
+      dialyzer: [ignore_warnings: "dialyzer.ignore-warnings"],
       package: package(),
       elixirc_paths: elixirc_paths(Mix.env()),
       docs: [
