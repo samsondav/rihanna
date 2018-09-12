@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.0.1
+
+- Fix a SQL syntax error in migration rollback.
+
 ## v1.0.0
 
 ### Added
