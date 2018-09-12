@@ -1,6 +1,5 @@
 # Rihanna
 
-[![Build Status](https://travis-ci.org/samphilipd/rihanna.svg?branch=master)](https://travis-ci.org/samphilipd/rihanna)
 [![Package Version](https://img.shields.io/hexpm/v/rihanna.svg)](https://hex.pm/packages/rihanna)
 [![Documentation](https://img.shields.io/badge/docs-latest-blue.svg)](https://hexdocs.pm/rihanna/)
 
