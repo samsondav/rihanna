@@ -43,11 +43,39 @@ defmodule Rihanna.Migration do
       end
 
       def down do
-        execute("""
-        DROP TABLE(#{unquote(table_name)});
-        """)
+        Enum.each(Rihanna.Migration.drop_statements(unquote(table_name)), fn statement ->
+          execute(statement)
+        end)
       end
     end
+  end
+
+  @doc """
+  Returns a list of SQL statements that will drop the Rihanna jobs table if
+  executed sequentially.
+
+  By default it takes the name of the table from the application config.
+
+  You may optionally supply a table name as an argument if you want to override
+  this.
+
+  ## Examples
+
+      > Rihanna.Migration.drop_statements
+      [...]
+
+      > Rihanna.Migration.drop_statements("my_alternative_table_name")
+      [...]
+  """
+  def drop_statements(table_name \\ Rihanna.Config.jobs_table_name()) do
+    [
+      """
+      DROP TABLE IF EXISTS "#{table_name}";
+      """,
+      """
+      DROP SEQUENCE IF EXISTS #{table_name}_id_seq;
+      """
+    ]
   end
 
   @doc """
