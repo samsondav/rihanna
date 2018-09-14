@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.1.0
+
+- Add missing index that massively improves performance at high loads
+
 ## v1.0.1
 
 - Fix a SQL syntax error in migration rollback.
