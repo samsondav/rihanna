@@ -133,6 +133,9 @@ defmodule Rihanna.Migration do
       """
       ALTER TABLE ONLY #{table_name}
       ADD CONSTRAINT #{table_name}_pkey PRIMARY KEY (id);
+      """,
+      """
+      CREATE INDEX rihanna_jobs_enqueued_at_id ON rihanna_jobs (enqueued_at ASC, id ASC);
       """
     ]
   end
@@ -207,8 +210,8 @@ defmodule Rihanna.Migration do
   """
 
   @doc false
-  # Check that the required upgrade columns have been added
-  def check_columns!(pg) do
+  # Check that the required upgrades have been added
+  def check_upgrade_not_required!(pg) do
     required_upgrade_columns = ["due_at", "rihanna_internal_meta"]
 
     case Postgrex.query(
@@ -225,6 +228,36 @@ defmodule Rihanna.Migration do
         raise_upgrade_required!()
 
       {:ok, %{rows: rows}} when length(rows) == length(required_upgrade_columns) ->
+        :ok
+    end
+
+    required_indexes = ["rihanna_jobs_pkey", "rihanna_jobs_enqueued_at_id"]
+
+    case Postgrex.query(
+           pg,
+           """
+           SELECT
+               DISTINCT i.relname AS index_name
+           FROM
+               pg_class t,
+               pg_class i,
+               pg_index ix,
+               pg_attribute a
+           WHERE
+               t.oid = ix.indrelid
+               AND i.oid = ix.indexrelid
+               AND a.attrelid = t.oid
+               AND a.attnum = ANY(ix.indkey)
+               AND t.relkind = 'r'
+               AND t.relname = $1
+               AND i.relname = ANY($2);
+           """,
+           [Rihanna.Job.table(), required_indexes]
+         ) do
+      {:ok, %{rows: rows}} when length(rows) < length(required_indexes) ->
+        raise_upgrade_required!()
+
+      {:ok, %{rows: rows}} when length(rows) == length(required_indexes) ->
         :ok
     end
   end

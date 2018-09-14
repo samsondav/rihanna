@@ -108,7 +108,7 @@ defmodule Rihanna.JobDispatcher do
 
   defp check_database!(pg) do
     Rihanna.Migration.check_table!(pg)
-    Rihanna.Migration.check_columns!(pg)
+    Rihanna.Migration.check_upgrade_not_required!(pg)
   end
 
   defp lock_jobs_for_execution(pg, working) do

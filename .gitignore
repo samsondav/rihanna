@@ -28,3 +28,5 @@ config/local.exs
 
 # Mac OS garbage
 .DS_Store
+
+.elixir_ls
