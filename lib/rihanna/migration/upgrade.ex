@@ -88,7 +88,7 @@ defmodule Rihanna.Migration.Upgrade do
       $$
       """,
       """
-      CREATE INDEX CONCURRENTLY IF NOT EXISTS rihanna_jobs_enqueued_at_id ON rihanna_jobs (enqueued_at ASC, id ASC);
+      CREATE INDEX IF NOT EXISTS rihanna_jobs_enqueued_at_id ON rihanna_jobs (enqueued_at ASC, id ASC);
       """
     ]
   end
