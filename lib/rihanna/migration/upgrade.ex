@@ -41,12 +41,39 @@ defmodule Rihanna.Migration.Upgrade do
       end
 
       def down do
-        execute("""
-        ALTER TABLE #{unquote(table_name)} DROP COLUMN due_at;
-        ALTER TABLE #{unquote(table_name)} DROP COLUMN rihanna_internal_meta;
-        """)
+        Enum.each(Upgrade.drop_statements(unquote(table_name)), &execute/1)
       end
     end
+  end
+
+  @doc """
+  Returns a list of SQL statements that will rollback the upgrade of Rihanna jobs table if
+  executed sequentially.
+
+  By default it takes the name of the table from the application config.
+
+  You may optionally supply a table name as an argument if you want to override
+  this.
+
+  ## Examples
+
+      > Rihanna.Migration.Upgrade.drop_statements
+      [...]
+
+      > Rihanna.Migration.Upgrade.drop_statements("my_alternative_table_name")
+      [...]
+  """
+  @spec statements() :: list[String.t()]
+  @spec statements(String.t() | atom) :: list[String.t()]
+  def drop_statements(table_name \\ Rihanna.Config.jobs_table_name()) do
+    [
+      """
+      ALTER TABLE #{table_name} DROP COLUMN due_at;
+      """,
+      """
+      ALTER TABLE #{table_name} DROP COLUMN rihanna_internal_meta;
+      """
+    ]
   end
 
   @doc """
