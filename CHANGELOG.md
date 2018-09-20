@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.1.2
+
+- Fix bug preventing rollback of upgrade migration
+
+## v1.1.1
+
+- Remove `CONCURRENTLY` from migration since it doesn't play well with Ecto.
+
 ## v1.1.0
 
 - Add missing index that massively improves performance at high loads
