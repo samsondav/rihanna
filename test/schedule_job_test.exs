@@ -101,7 +101,9 @@ defmodule ScheduleJobTest do
   defp assert_job(job, expected_term, expected_due_at) do
     assert %Rihanna.Job{} = job
     assert %DateTime{} = job.enqueued_at
-    assert DateTime.compare(job.due_at, expected_due_at) == :eq
+
+    # Compare by seconds because time resolution is lost when persisting to the DB
+    assert DateTime.to_unix(job.due_at) == DateTime.to_unix(expected_due_at)
     assert job.fail_reason |> is_nil
     assert job.failed_at |> is_nil
     assert job.term == expected_term

@@ -78,9 +78,9 @@ defmodule Rihanna.JobDispatcher do
     {:noreply, Map.put(state, :working, working)}
   end
 
-  defp job_raised(%{id: id, term: {job_module, args}}, reason, pg) do
+  defp job_raised(%{id: id, term: {job_module, arg}}, reason, pg) do
     # NOTE: Do we need to demonitor here?
-    Rihanna.Job.after_error(job_module, reason, args)
+    Rihanna.Job.after_error(job_module, reason, arg)
     Rihanna.Job.mark_failed(pg, id, DateTime.utc_now(), Exception.format_exit(reason))
   end
 
@@ -89,9 +89,9 @@ defmodule Rihanna.JobDispatcher do
     Rihanna.Job.mark_failed(pg, job.id, DateTime.utc_now(), Exception.format_exit(reason))
   end
 
-  defp job_failure(%{id: id, term: {job_module, args}}, reason, pg) do
+  defp job_failure(%{id: id, term: {job_module, arg}}, reason, pg) do
     # NOTE: Do we need to demonitor here?
-    Rihanna.Job.after_error(job_module, reason, args)
+    Rihanna.Job.after_error(job_module, reason, arg)
 
     Rihanna.Job.mark_failed(
       pg,
