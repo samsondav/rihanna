@@ -9,6 +9,7 @@ config :rihanna,
     hostname: "127.0.0.1",
     port: 5432
   ],
-  debug: true
+  debug: true,
+  dispatcher_poll_interval: 5
 
 config :logger, level: :warn

@@ -3,11 +3,12 @@ defmodule Rihanna.Job do
 
   @type result :: any
   @type reason :: any
+  @type arg :: any
   @type t :: %__MODULE__{}
 
   @callback perform(arg :: any) :: :ok | {:ok, result} | :error | {:error, reason}
-  @callback after_error({:error, reason} | :error | Exception.t()) :: any()
-  @optional_callbacks after_error: 1
+  @callback after_error({:error, reason} | :error | Exception.t(), arg) :: any()
+  @optional_callbacks after_error: 2
 
   @moduledoc """
   A behaviour for Rihanna jobs.
@@ -333,8 +334,10 @@ defmodule Rihanna.Job do
   Checks whether a job implemented the `after_error` callback and runs it if it
   does.
   """
-  def after_error(job_module, reason, args) do
-    if :erlang.function_exported(job_module, :after_error, 2),
-      do: job_module.after_error(reason, args)
+  def after_error(job_module, reason, arg) do
+    if :erlang.function_exported(job_module, :after_error, 2) do
+      # If they implemented the behaviour, there will only ever be one arg
+      job_module.after_error(reason, arg)
+    end
   end
 end

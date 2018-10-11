@@ -42,6 +42,11 @@ defmodule Rihanna.JobDispatcherTest do
     end
   end
 
+  defp wait_for_task_execution() do
+    time_to_wait = Enum.max([500, Rihanna.Config.dispatcher_poll_interval() * 2])
+    :timer.sleep(time_to_wait)
+  end
+
   setup %{pg: pg} do
     Postgrex.query!(pg, "DELETE FROM rihanna_jobs;", [])
     {:ok, %{js: Task.Supervisor.start_link(name: Rihanna.TaskSupervisor)}}
@@ -167,7 +172,7 @@ defmodule Rihanna.JobDispatcherTest do
     test "marks job as successful", %{pg: pg} do
       {:ok, %{id: id}} = Rihanna.Job.enqueue({MFAMock, :fun, [self(), "job-mark-successful"]})
 
-      :timer.sleep(100)
+      wait_for_task_execution()
 
       assert get_job_by_id(pg, id) == nil
       refute lock_held?(pg, id)
@@ -176,8 +181,9 @@ defmodule Rihanna.JobDispatcherTest do
     test "removes task from state", %{dispatcher: dispatcher} do
       Rihanna.Job.enqueue({MFAMock, :fun, [self(), "job-test-remove-task-from-state"]})
 
-      assert_receive {"job-test-remove-task-from-state", _}
-      :timer.sleep(100)
+      wait_for_task_execution()
+
+      assert_received {"job-test-remove-task-from-state", _}
 
       state = :sys.get_state(dispatcher)
 
@@ -197,7 +203,7 @@ defmodule Rihanna.JobDispatcherTest do
     test "marks job as failed when returns {:error, reason}", %{pg: pg} do
       ref = make_ref()
       {:ok, %{id: id}} = Rihanna.Job.enqueue({ErrorTupleBehaviourMock, [self(), ref]})
-      :timer.sleep(100)
+      wait_for_task_execution()
       %Rihanna.Job{fail_reason: reason} = get_job_by_id(pg, id)
       assert reason == "Job Failed\n{:error, %{message: \"failed for some reason\"}}"
     end
@@ -208,7 +214,7 @@ defmodule Rihanna.JobDispatcherTest do
 
       assert_receive {^ref, _}
 
-      :timer.sleep(100)
+      wait_for_task_execution()
 
       state = :sys.get_state(dispatcher)
 
@@ -219,14 +225,14 @@ defmodule Rihanna.JobDispatcherTest do
     test "runs the after_error callback on the job when it returns {:error, reason}" do
       ref = make_ref()
       {:ok, _} = Rihanna.Job.enqueue({ErrorTupleBehaviourMock, [self(), ref]})
-      :timer.sleep(100)
+      wait_for_task_execution()
       assert_received "After error callback"
     end
 
     test "marks job as failed when returns :error", %{pg: pg} do
       ref = make_ref()
       {:ok, %{id: id}} = Rihanna.Job.enqueue({ErrorBehaviourMock, [self(), ref]})
-      :timer.sleep(100)
+      wait_for_task_execution()
       %Rihanna.Job{fail_reason: reason} = get_job_by_id(pg, id)
       assert reason == "Job Failed\n:error"
     end
@@ -235,9 +241,9 @@ defmodule Rihanna.JobDispatcherTest do
       ref = make_ref()
       Rihanna.Job.enqueue({ErrorBehaviourMock, [self(), ref]})
 
-      assert_receive {^ref, _}
+      wait_for_task_execution()
 
-      :timer.sleep(100)
+      assert_received {^ref, _}
 
       state = :sys.get_state(dispatcher)
 
@@ -248,7 +254,7 @@ defmodule Rihanna.JobDispatcherTest do
     test "runs the after_error callback on the job when it returns :error" do
       ref = make_ref()
       {:ok, _} = Rihanna.Job.enqueue({ErrorBehaviourMock, [self(), ref]})
-      :timer.sleep(100)
+      wait_for_task_execution()
       assert_received "After error callback"
     end
   end
@@ -264,7 +270,7 @@ defmodule Rihanna.JobDispatcherTest do
     test "marks job as failed", %{pg: pg} do
       {:ok, %{id: id}} = Rihanna.Job.enqueue({Nope, :broken, [:kaboom!]})
 
-      :timer.sleep(100)
+      wait_for_task_execution()
 
       job = get_job_by_id(pg, id)
 
@@ -277,7 +283,7 @@ defmodule Rihanna.JobDispatcherTest do
     test "removes task from state", %{dispatcher: dispatcher} do
       Rihanna.Job.enqueue({Nope, :broken, [:kaboom!]})
 
-      :timer.sleep(100)
+      wait_for_task_execution()
 
       state = :sys.get_state(dispatcher)
 
@@ -297,7 +303,7 @@ defmodule Rihanna.JobDispatcherTest do
     test "marks job as failed", %{pg: pg} do
       {:ok, %{id: id}} = Rihanna.Job.enqueue({BadMFAMock, :perform, [:ok]})
 
-      :timer.sleep(100)
+      wait_for_task_execution()
 
       job = get_job_by_id(pg, id)
 
@@ -308,7 +314,7 @@ defmodule Rihanna.JobDispatcherTest do
     test "removes task from state", %{dispatcher: dispatcher} do
       Rihanna.Job.enqueue({BadMFAMock, :perform, [:ok]})
 
-      :timer.sleep(100)
+      wait_for_task_execution()
 
       state = :sys.get_state(dispatcher)
 
@@ -318,7 +324,7 @@ defmodule Rihanna.JobDispatcherTest do
 
     test "runs the after_error callback on a job queued using the behaviour when it raises an error" do
       {:ok, %{id: _}} = Rihanna.Job.enqueue({BadMFAMock, [self(), :ok]})
-      :timer.sleep(100)
+      wait_for_task_execution()
       assert_received "After error callback"
     end
   end
@@ -412,7 +418,7 @@ defmodule Rihanna.JobDispatcherTest do
     test "it doesn't run the after_error callback on the job when it returns :error" do
       ref = make_ref()
       {:ok, _} = Rihanna.Job.enqueue({ErrorBehaviourMockWithNoErrorCallback, [self(), ref]})
-      :timer.sleep(100)
+      wait_for_task_execution()
       refute_received "After error callback"
     end
   end
