@@ -1,5 +1,10 @@
 # Changelog
 
+## v1.1.3
+
+- Fix callback spec for `after_error`
+- Fix flaky tests
+
 ## v1.1.2
 
 - Fix bug preventing rollback of upgrade migration
