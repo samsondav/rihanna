@@ -180,6 +180,29 @@ defmodule Rihanna.Job do
   end
 
   @doc false
+  def delete(pg \\ Rihanna.Job.Postgrex, job_id) do
+    result =
+      Postgrex.query(
+        pg,
+        """
+          DELETE FROM "#{table()}"
+          WHERE
+            id = $1
+          RETURNING #{@sql_fields}
+        """,
+        [job_id]
+      )
+
+    case result do
+      {:ok, %Postgrex.Result{rows: [job]}} ->
+        {:ok, from_sql(job)}
+
+      {:ok, %Postgrex.Result{num_rows: 0}} ->
+        {:error, :job_not_found}
+    end
+  end
+
+  @doc false
   def lock(pg) when is_pid(pg) do
     lock(pg, [])
   end
