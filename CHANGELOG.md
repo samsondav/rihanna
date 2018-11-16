@@ -1,5 +1,10 @@
 # Changelog
 
+## v1.1.4
+
+- Add `Rihanna.delete`
+- Fix specs in migrations
+
 ## v1.1.3
 
 - Fix callback spec for `after_error`
