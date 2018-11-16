@@ -63,8 +63,8 @@ defmodule Rihanna.Migration.Upgrade do
       > Rihanna.Migration.Upgrade.drop_statements("my_alternative_table_name")
       [...]
   """
-  @spec statements() :: list[String.t()]
-  @spec statements(String.t() | atom) :: list[String.t()]
+  @spec drop_statements() :: list[String.t()]
+  @spec drop_statements(String.t() | atom) :: list[String.t()]
   def drop_statements(table_name \\ Rihanna.Config.jobs_table_name()) do
     [
       """
