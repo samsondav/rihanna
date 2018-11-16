@@ -102,6 +102,31 @@ defmodule RihannaTest do
     end
   end
 
+  describe "delete/1" do
+    setup [:create_jobs_table]
+
+    test "deletes a job", %{pg: pg} do
+      {:ok, job} = Rihanna.enqueue(MockJob, :arg)
+
+      assert {:ok,
+              %Rihanna.Job{
+                due_at: nil,
+                enqueued_at: _,
+                fail_reason: nil,
+                failed_at: nil,
+                id: 1,
+                term: {Rihanna.Mocks.MockJob, :arg}
+              }} = Rihanna.delete(job.id)
+
+      refute get_job_by_id(pg, job.id)
+    end
+
+    test "returns error if job does not exist", %{pg: pg} do
+      assert Rihanna.delete(1) == {:error, :job_not_found}
+      refute get_job_by_id(pg, 1)
+    end
+  end
+
   describe "without a Rihanna jobs table" do
     setup [:drop_jobs_table]
 

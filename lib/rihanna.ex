@@ -190,6 +190,21 @@ defmodule Rihanna do
     Rihanna.Job.retry_failed(job_id)
   end
 
+  @doc """
+  Deletes a job by ID. ID can be passed as either integer or string.
+
+  """
+  @spec delete(String.t() | integer) :: {:ok, Rihanna.Job.t()} | {:error, :job_not_found}
+  def delete(job_id) when is_binary(job_id) do
+    job_id
+    |> String.to_integer()
+    |> delete()
+  end
+
+  def delete(job_id) when is_integer(job_id) and job_id > 0 do
+    Rihanna.Job.delete(job_id)
+  end
+
   defp due_at(at: %DateTime{} = due_at), do: due_at
 
   defp due_at(in: due_in) when is_integer(due_in) and due_in > 0 do
