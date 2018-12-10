@@ -196,9 +196,13 @@ I have seen it do around 1.5k jobs per second on a mid-2016 Macbook Pro. Signifi
 
 More detailed benchmarks to come. For now see: [https://github.com/chanks/queue-shootout](https://github.com/chanks/queue-shootout).
 
-**Q. Does it support multiple queues/cron tasks?**
+**Q. Does it support multiple queues?**
 
 Not yet, but it will.
+
+**Q. Does it support cron tasks/recurring jobs?**
+
+Yes! To implement a recurring job have the job reschedule itself after completion and Postgres' ACID guarantees will ensure that it continues running. You will need to enqueue the job manually the first time from the console.
 
 **Q. Are there risks of arbitrary code execution with the MFA variant?**
 
