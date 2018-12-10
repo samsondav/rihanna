@@ -6,4 +6,4 @@
     |> Keyword.put(:name, Rihanna.Job.Postgrex)
   )
 
-ExUnit.start()
+ExUnit.start(capture_log: true)
