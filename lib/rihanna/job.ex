@@ -94,8 +94,7 @@ defmodule Rihanna.Job do
     now = DateTime.utc_now()
 
     result =
-      Postgrex.query(
-        Rihanna.Job.Postgrex,
+      enqueue_conn_exec(
         """
           INSERT INTO "#{table()}" (term, enqueued_at, due_at)
           VALUES ($1, $2, $3)
@@ -151,13 +150,11 @@ defmodule Rihanna.Job do
   def from_sql([]), do: []
 
   @doc false
-  def retry_failed(pg \\ Rihanna.Job.Postgrex, job_id)
-      when (is_pid(pg) or is_atom(pg)) and is_integer(job_id) do
+  def retry_failed(job_id) when is_integer(job_id) do
     now = DateTime.utc_now()
 
-    result =
-      Postgrex.query!(
-        pg,
+    {:ok, result} =
+      enqueue_conn_exec(
         """
           UPDATE "#{table()}"
           SET
@@ -180,10 +177,9 @@ defmodule Rihanna.Job do
   end
 
   @doc false
-  def delete(pg \\ Rihanna.Job.Postgrex, job_id) do
+  def delete(job_id) do
     result =
-      Postgrex.query(
-        pg,
+      enqueue_conn_exec(
         """
           DELETE FROM "#{table()}"
           WHERE
@@ -362,5 +358,20 @@ defmodule Rihanna.Job do
       # If they implemented the behaviour, there will only ever be one arg
       job_module.after_error(reason, arg)
     end
+  end
+
+  # Some operations can use the global enqueue conn as they don't use locks
+  defp enqueue_conn_exec(query, args) do
+    enqueue_conn_exec(Rihanna.Config.enqueue_postgres_connection(), query, args)
+  end
+
+  if Code.ensure_compiled?(Ecto) do
+    defp enqueue_conn_exec({Ecto, repo}, query, args) do
+      Ecto.Adapters.SQL.query(repo, query, args)
+    end
+  end
+
+  defp enqueue_conn_exec({Postgrex, conn}, query, args) do
+    Postgrex.query(conn, query, args)
   end
 end

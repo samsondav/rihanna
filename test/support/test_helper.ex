@@ -50,10 +50,16 @@ defmodule TestHelper do
     :ok
   end
 
-  def get_job_by_id(pg, id) when is_pid(pg) and is_integer(id) do
+  def get_job_by_id(conn, id) when is_integer(id) do
+    exec =
+      case conn do
+        TestApp.Repo -> &Ecto.Adapters.SQL.query!/3
+        _ when is_pid(conn) -> &Postgrex.query!/3
+      end
+
     %{rows: rows} =
-      Postgrex.query!(
-        pg,
+      exec.(
+        conn,
         """
         SELECT id, term, enqueued_at, due_at, failed_at, fail_reason FROM "rihanna_jobs" WHERE id = $1
         """,
