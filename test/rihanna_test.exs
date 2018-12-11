@@ -103,12 +103,12 @@ defmodule RihannaTest do
     end
   end
 
-  describe "user specified enqueue_postgres_connection" do
+  describe "user specified producer_postgres_connection" do
     setup [:create_jobs_table]
 
     test "`enqueue/2`, `get_job_by_id/1`, `delete/1` using an Ecto Repo", %{pg: pg} do
-      TemporaryEnv.put :rihanna, :enqueue_postgres_connection, {Ecto, TestApp.Repo} do
-        assert Rihanna.Config.enqueue_postgres_connection() == {Ecto, TestApp.Repo}
+      TemporaryEnv.put :rihanna, :producer_postgres_connection, {Ecto, TestApp.Repo} do
+        assert Rihanna.Config.producer_postgres_connection() == {Ecto, TestApp.Repo}
 
         TestApp.Repo.transaction(fn ->
           {:ok, job} = Rihanna.enqueue(MockJob, :arg)
@@ -132,8 +132,8 @@ defmodule RihannaTest do
     end
 
     test "`enqueue/2`, `get_job_by_id/1`, `delete/1` using a Postgrex conn", %{pg: pg} do
-      TemporaryEnv.put :rihanna, :enqueue_postgres_connection, {Postgrex, pg} do
-        assert Rihanna.Config.enqueue_postgres_connection() == {Postgrex, pg}
+      TemporaryEnv.put :rihanna, :producer_postgres_connection, {Postgrex, pg} do
+        assert Rihanna.Config.producer_postgres_connection() == {Postgrex, pg}
 
         {:ok, job} = Rihanna.enqueue(MockJob, :arg)
 

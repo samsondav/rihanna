@@ -362,7 +362,7 @@ defmodule Rihanna.Job do
 
   # Some operations can use the global enqueue conn as they don't use locks
   defp enqueue_conn_exec(query, args) do
-    enqueue_conn_exec(Rihanna.Config.enqueue_postgres_connection(), query, args)
+    enqueue_conn_exec(Rihanna.Config.producer_postgres_connection(), query, args)
   end
 
   if Code.ensure_compiled?(Ecto) do

@@ -132,15 +132,16 @@ defmodule Rihanna.Config do
 
   ```
   # Use a user-started Postgres connection process
-  config :rihanna, enqueue_postgres_connection: {Postgrex, :my_postgrex_connection}
+  # `:my_postgrex_connection` is a named process started with `Postgrex.start_link/1`.
+  config :rihanna, producer_postgres_connection: {Postgrex, :my_postgrex_connection}
   ```
 
   ```
   # Use an Ecto Repo
-  config :rihanna, enqueue_postgres_connection: {Ecto, MyApp.Repo}
+  config :rihanna, producer_postgres_connection: {Ecto, MyApp.Repo}
   ```
   """
-  def enqueue_postgres_connection do
-    Application.get_env(:rihanna, :enqueue_postgres_connection, {Postgrex, Rihanna.Job.Postgrex})
+  def producer_postgres_connection do
+    Application.get_env(:rihanna, :producer_postgres_connection, {Postgrex, Rihanna.Job.Postgrex})
   end
 end

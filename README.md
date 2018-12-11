@@ -188,7 +188,7 @@ dispatchers.
 In the default configuration of one dispatcher per node, Rihanna will use 2
 database connections per node.
 
-It is possible to reuse an existing Postgres connection (such as an Ecto Repo) for enqueuing etc, brining the number of connections down to N where N is the number of dispatchers. See [Rihanna.Config](https://hexdocs.pm/rihanna/Rihanna.Config.html) for more information.
+It is possible to reuse an existing Postgres connection (such as an Ecto Repo) for enqueuing etc, bringing the number of connections down to N where N is the number of dispatchers. See [Rihanna.Config](https://hexdocs.pm/rihanna/Rihanna.Config.html) for more information.
 
 **Q. How fast is Rihanna?**
 
