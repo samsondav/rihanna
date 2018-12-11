@@ -51,18 +51,26 @@ defmodule Rihanna.Supervisor do
 
   @doc false
   def init({db, _config}) do
-    children = [
+    children =
+      [
+        producer_postgres_connection(db),
+        {Task.Supervisor, name: Rihanna.TaskSupervisor},
+        %{
+          id: Rihanna.JobDispatcher,
+          start: {Rihanna.JobDispatcher, :start_link, [[db: db], [name: Rihanna.JobDispatcher]]}
+        }
+      ]
+      |> Enum.filter(& &1)
+
+    Supervisor.init(children, strategy: :one_for_one)
+  end
+
+  defp producer_postgres_connection(db) do
+    unless(Rihanna.Config.producer_postgres_connection_supplied?()) do
       %{
         id: Rihanna.Job.Postgrex,
         start: {Postgrex, :start_link, [Keyword.put(db, :name, Rihanna.Job.Postgrex)]}
-      },
-      {Task.Supervisor, name: Rihanna.TaskSupervisor},
-      %{
-        id: Rihanna.JobDispatcher,
-        start: {Rihanna.JobDispatcher, :start_link, [[db: db], [name: Rihanna.JobDispatcher]]}
       }
-    ]
-
-    Supervisor.init(children, strategy: :one_for_one)
+    end
   end
 end

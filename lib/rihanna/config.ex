@@ -144,4 +144,9 @@ defmodule Rihanna.Config do
   def producer_postgres_connection do
     Application.get_env(:rihanna, :producer_postgres_connection, {Postgrex, Rihanna.Job.Postgrex})
   end
+
+  @doc false
+  def producer_postgres_connection_supplied? do
+    Application.get_env(:rihanna, :producer_postgres_connection, false)
+  end
 end
