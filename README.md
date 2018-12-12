@@ -14,6 +14,17 @@ You might consider using Rihanna if:
 - You need to process up to 10,000 jobs per second (if you need more throughout than this you should probably consider a "real" messaging system like Kafka or ActiveMQ)
 - You want to pass arbitrary Elixir/Erlang terms that may not be JSON-serializable such as tuples or structs as arguments
 
+## Contents
+
+- [Requirements](#requirements)
+- [Usage](#usage)
+- [Installation](#installation)
+  - [With Ecto](#with-ecto)
+  - [Without Ecto](#without-ecto)
+- [Configuration](#configuration)
+- [Upgrading](#upgrading)
+- [FAQs](#faqs)
+
 ## Requirements
 
 Rihanna requires Elixir >= 1.5 (OTP >= 18.0) and Postgres >= 9.5
@@ -80,7 +91,9 @@ Jobs scheduled for later execution will run _after_ their scheduled date, but th
 
 ## Installation
 
-### Step 1 - add the dependency
+### With Ecto
+
+#### Step 1 - add the dependency
 
 Add `rihanna` to your list of dependencies in `mix.exs`:
 
@@ -94,15 +107,13 @@ end
 
 Install with `mix deps.get`.
 
-### Step 2 - run the migration
+#### Step 2 - migrate the database
 
 Add a migration to create your jobs table.
 
 Rihanna stores jobs in a table in your database. The default table name is "rihanna_jobs".
 
-#### Using Ecto
-
-The easiest way to create the database is with Ecto. Run `mix ecto.gen.migration create_rihanna_jobs` and make your migration look like this:
+Run `mix ecto.gen.migration create_rihanna_jobs` and make your migration look like this:
 
 ```elixir
 defmodule MyApp.CreateRihannaJobs do
@@ -112,11 +123,71 @@ end
 
 Now you can run `mix ecto.migrate`.
 
-#### Without Ecto
+#### Step 3 - configure Rihanna to use your Ecto Repo
 
-Ecto is not required to run Rihanna. If you want to create the table yourself, without Ecto, take a look at the docs for [Rihanna.Migration](https://hexdocs.pm/rihanna/Rihanna.Migration.html#content).
+When using Ecto Rihanna can reuse your Ecto Repo to enqueue and schedule jobs, rather than creating a new database connection for these actions. This will also make Rihanna use the Ecto sandbox in test so you can run tests that enqueue jobs asynchronously.
 
-### Step 3 - boot the supervisor
+Note Rihanna will still create a dedicated database connection outside of the Repo for the dispatcher to poll for new jobs.
+
+```elixir
+# config/config.exs
+config :rihanna,
+  producer_postgres_connection: {Ecto, MyApp.Repo} # Use the name of your Repo here
+```
+
+#### Step 4 - boot the supervisor
+
+Add `Rihanna.Supervisor` to your supervision tree
+
+`Rihanna.Supervisor` starts a job dispatcher and by adding it to your supervision tree it will automatically start running jobs when your app boots.
+
+Rihanna requires a database configuration to be passed in under the `postgrex` key. This is passed through directly to Postgrex.
+
+If you are already using Ecto you can avoid duplicating your DB config by pulling this out of your existing Repo using `My.Repo.config()`.
+
+```elixir
+# Elixir 1.6+
+# NOTE: In Phoenix you would find this inside `lib/my_app/application.ex`
+children = [
+  {Rihanna.Supervisor, [postgrex: My.Repo.config()]}
+]
+```
+
+```elixir
+# Elixir 1.5
+import Supervisor.Spec, warn: false
+
+children = [
+  supervisor(Rihanna.Supervisor, [[postgrex: My.Repo.config()]])
+]
+```
+
+
+### Without Ecto
+
+#### Step 1 - add the dependency
+
+Add `rihanna` to your list of dependencies in `mix.exs`:
+
+```elixir
+def deps do
+  [
+    {:rihanna, ">= 0.0.0"}
+  ]
+end
+```
+
+Install with `mix deps.get`.
+
+#### Step 2 - migrate the database
+
+Add a migration to create your jobs table.
+
+Rihanna stores jobs in a table in your database. The default table name is "rihanna_jobs".
+
+To create the table yourself take a look at the docs for [Rihanna.Migration](https://hexdocs.pm/rihanna/Rihanna.Migration.html#content).
+
+#### Step 3 - boot the supervisor
 
 Add `Rihanna.Supervisor` to your supervision tree
 
