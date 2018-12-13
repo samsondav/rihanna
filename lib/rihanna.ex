@@ -91,28 +91,6 @@ defmodule Rihanna do
     raise ArgumentError, @enqueue_help_message
   end
 
-  @schedule_help_message """
-  Rihanna.schedule requires either two arguments in the form {mod, fun, args}
-  and schedule options or three arguments including a module implementing
-  Rihanna.Job, its args, and schedule options.
-
-  Schedule options require either an `at:` DateTime struct or `in:` duration
-  in milliseconds.
-
-  For example, to run IO.puts("Hello") after midday on 1st July, 2018 (UTC):
-
-  > due_at = DateTime.from_naive!(~N[2018-07-01 12:00:00], "Etc/UTC")
-  > Rihanna.schedule({IO, :puts, ["Hello"]}, at: due_at)
-
-  Or, if you have a job called MyJob that implements the Rihanna.Job behaviour:
-
-  > Rihanna.schedule(MyJob, arg, at: due_at)
-
-  To run IO.puts("Hello") in one hour:
-
-  Rihanna.schedule({IO, :puts, ["Hello"]}, in: :timer.hours(1))
-  """
-
   @type schedule_option :: {:at, DateTime.t()} | {:in, pos_integer}
   @type schedule_options :: [schedule_option]
 
@@ -135,10 +113,6 @@ defmodule Rihanna do
   def schedule(term = {mod, fun, args}, schedule_options)
       when is_atom(mod) and is_atom(fun) and is_list(args) do
     Rihanna.Job.enqueue(term, due_at(schedule_options))
-  end
-
-  def schedule(_term, _schedule_options) do
-    raise ArgumentError, @schedule_help_message
   end
 
   @doc """
@@ -166,10 +140,6 @@ defmodule Rihanna do
   @spec schedule(module, any, schedule_options) :: {:ok, Rihanna.Job.t()}
   def schedule(mod, arg, schedule_options) when is_atom(mod) do
     Rihanna.Job.enqueue({mod, arg}, due_at(schedule_options))
-  end
-
-  def schedule(_mod, _arg, _schedule_options) do
-    raise ArgumentError, @schedule_help_message
   end
 
   @doc """
@@ -212,6 +182,4 @@ defmodule Rihanna do
 
     DateTime.from_unix!(now + due_in, :milliseconds)
   end
-
-  defp due_at(_schedule_options), do: raise(ArgumentError, @schedule_help_message)
 end

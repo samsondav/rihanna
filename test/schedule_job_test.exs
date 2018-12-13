@@ -26,19 +26,19 @@ defmodule ScheduleJobTest do
     end
 
     test "shows helpful error for invalid argument" do
-      assert_raise ArgumentError, ~r/^Rihanna.schedule requires/, fn ->
+      assert_raise FunctionClauseError, fn ->
         schedule("not a MFA", at: @due_at)
       end
     end
 
     test "shows helpful error for invalid schedule at argument" do
-      assert_raise ArgumentError, ~r/^Rihanna.schedule requires/, fn ->
+      assert_raise FunctionClauseError, fn ->
         schedule("not a MFA", at: ~N[2016-05-24 13:26:08.003])
       end
     end
 
     test "shows helpful error for missing schedule argument" do
-      assert_raise ArgumentError, ~r/^Rihanna.schedule requires/, fn ->
+      assert_raise FunctionClauseError, fn ->
         schedule("not a MFA", [])
       end
     end
@@ -64,13 +64,13 @@ defmodule ScheduleJobTest do
     end
 
     test "shows helpful error for invalid argument" do
-      assert_raise ArgumentError, ~r/^Rihanna.schedule requires/, fn ->
+      assert_raise FunctionClauseError, fn ->
         schedule("not a MFA", in: :timer.minutes(1))
       end
     end
 
     test "shows helpful error for invalid schedule in argument" do
-      assert_raise ArgumentError, ~r/^Rihanna.schedule requires/, fn ->
+      assert_raise FunctionClauseError, fn ->
         schedule("not a MFA", in: :invalid)
       end
     end
@@ -92,7 +92,7 @@ defmodule ScheduleJobTest do
     end
 
     test "shows helpful error for invalid argument" do
-      assert_raise ArgumentError, ~r/^Rihanna.schedule requires/, fn ->
+      assert_raise FunctionClauseError, fn ->
         schedule("not a module", [], at: @due_at)
       end
     end
