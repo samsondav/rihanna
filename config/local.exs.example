@@ -1,15 +1,19 @@
 use Mix.Config
 
+postgrex_config = [
+  username: "postgres",
+  password: "",
+  database: "rihanna_db",
+  hostname: "127.0.0.1",
+  port: 5432
+]
+
 config :rihanna,
   jobs_table_name: "rihanna_jobs",
-  postgrex: [
-    username: "postgres",
-    password: "",
-    database: "rihanna_db",
-    hostname: "127.0.0.1",
-    port: 5432
-  ],
+  postgrex: postgrex_config,
   debug: true,
   dispatcher_poll_interval: 5
 
 config :logger, level: :warn
+
+config :rihanna, TestApp.Repo, postgrex_config

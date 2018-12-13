@@ -120,4 +120,33 @@ defmodule Rihanna.Config do
   def behaviour_only?() do
     Application.get_env(:rihanna, :behaviour_only, false)
   end
+
+  @doc """
+  Specifies the Postgres database connection to use when enqueuing, scheduling,
+  and deleting jobs. When set the `Rihanna.Supervisor` will not start a
+  dedicated `Postgrex` connection process for these operations.
+
+  If you application uses Ecto you can re-use your Ecto Repo here.
+
+  ## Examples
+
+  ```
+  # Use a user-started Postgres connection process
+  # `:my_postgrex_connection` is a named process started with `Postgrex.start_link/1`.
+  config :rihanna, producer_postgres_connection: {Postgrex, :my_postgrex_connection}
+  ```
+
+  ```
+  # Use an Ecto Repo
+  config :rihanna, producer_postgres_connection: {Ecto, MyApp.Repo}
+  ```
+  """
+  def producer_postgres_connection do
+    Application.get_env(:rihanna, :producer_postgres_connection, {Postgrex, Rihanna.Job.Postgrex})
+  end
+
+  @doc false
+  def producer_postgres_connection_supplied? do
+    Application.get_env(:rihanna, :producer_postgres_connection, false)
+  end
 end

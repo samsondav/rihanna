@@ -4,7 +4,7 @@ defmodule Rihanna.MixProject do
   def project do
     [
       app: :rihanna,
-      version: "1.1.4",
+      version: "1.2.0",
       elixir: "~> 1.5",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
@@ -23,9 +23,17 @@ defmodule Rihanna.MixProject do
   end
 
   def application do
-    [
-      extra_applications: [:logger]
-    ]
+    case Mix.env() do
+      # In test we start an application to test the Ecto Repo integration
+      :test ->
+        [
+          mod: {TestApp, []},
+          extra_applications: [:logger, :runtime_tools]
+        ]
+
+      _ ->
+        [extra_applications: [:logger]]
+    end
   end
 
   # Specifies which paths to compile per environment.
@@ -35,11 +43,15 @@ defmodule Rihanna.MixProject do
   defp deps do
     [
       {:postgrex, ">= 0.13.3"},
+      # Optional Ecto integration
+      {:ecto, ">= 2.0.0", optional: true},
+      {:ecto_sql, ">= 3.0.0", optional: true},
       # Development tools
       {:benchee, ">= 0.13.0", only: :test},
       {:ex_doc, ">= 0.0.0", only: :dev, runtime: false},
       {:dialyxir, ">= 0.0.0", only: :dev, runtime: false},
-      {:mix_test_watch, ">= 0.0.0", only: :dev, runtime: false}
+      {:mix_test_watch, ">= 0.0.0", only: :dev, runtime: false},
+      {:temporary_env, ">= 2.0.0", only: :test, runtime: false}
     ]
   end
 
@@ -47,7 +59,7 @@ defmodule Rihanna.MixProject do
     [
       description: "Rihanna is a database-backed job queue.",
       licenses: ["MIT"],
-      maintainers: ["sampdavies@gmail.com"],
+      maintainers: ["sampdavies@gmail.com", "louis@lpil.uk"],
       links: %{"GitHub" => "https://github.com/samphilipd/rihanna"}
     ]
   end

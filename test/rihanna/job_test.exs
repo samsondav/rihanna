@@ -37,7 +37,7 @@ defmodule Rihanna.JobTest do
     end
 
     test "resets enqueued_at", %{pg: pg, failed_job: failed_job} do
-      assert {:ok, :retried} = retry_failed(pg, failed_job.id)
+      assert {:ok, :retried} = retry_failed(failed_job.id)
 
       updated_job = get_job_by_id(pg, failed_job.id)
 
@@ -46,8 +46,8 @@ defmodule Rihanna.JobTest do
   end
 
   describe "retry_failed/1 when job has not failed" do
-    test "returns {:error, :job_not_found}", %{pg: pg, job: job} do
-      assert {:error, :job_not_found} = retry_failed(pg, job.id)
+    test "returns {:error, :job_not_found}", %{job: job} do
+      assert {:error, :job_not_found} = retry_failed(job.id)
     end
 
     test "does not change job", %{pg: pg, job: job} do

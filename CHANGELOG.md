@@ -1,5 +1,10 @@
 # Changelog
 
+## v1.2.0
+
+- Add support for enqueuing job via a user supplied Postgres connection. This
+  can be either a Postgrex process or an Ecto Repo.
+
 ## v1.1.4
 
 - Add `Rihanna.delete`

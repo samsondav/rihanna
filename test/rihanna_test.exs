@@ -5,6 +5,7 @@ defmodule RihannaTest do
   import Rihanna
   import TestHelper
   alias Rihanna.Mocks.MockJob
+  require TemporaryEnv
 
   @term {IO, :puts, ["Work, work, work, work, work."]}
 
@@ -98,6 +99,56 @@ defmodule RihannaTest do
 
       assert_raise ArgumentError, expected_message, fn ->
         enqueue("not a module", :arg)
+      end
+    end
+  end
+
+  describe "user specified producer_postgres_connection" do
+    setup [:create_jobs_table]
+
+    test "`enqueue/2`, `get_job_by_id/1`, `delete/1` using an Ecto Repo", %{pg: pg} do
+      TemporaryEnv.put :rihanna, :producer_postgres_connection, {Ecto, TestApp.Repo} do
+        assert Rihanna.Config.producer_postgres_connection() == {Ecto, TestApp.Repo}
+
+        TestApp.Repo.transaction(fn ->
+          {:ok, job} = Rihanna.enqueue(MockJob, :arg)
+
+          # Repo conn is being used
+          assert job = get_job_by_id(TestApp.Repo, job.id)
+          refute get_job_by_id(pg, job.id)
+
+          assert %Rihanna.Job{} = job
+          assert %DateTime{} = job.enqueued_at
+          assert job.due_at |> is_nil
+          assert job.fail_reason |> is_nil
+          assert job.failed_at |> is_nil
+          assert job.term == {Rihanna.Mocks.MockJob, :arg}
+
+          assert {:ok, _} = Rihanna.delete(job.id)
+
+          refute get_job_by_id(pg, job.id)
+        end)
+      end
+    end
+
+    test "`enqueue/2`, `get_job_by_id/1`, `delete/1` using a Postgrex conn", %{pg: pg} do
+      TemporaryEnv.put :rihanna, :producer_postgres_connection, {Postgrex, pg} do
+        assert Rihanna.Config.producer_postgres_connection() == {Postgrex, pg}
+
+        {:ok, job} = Rihanna.enqueue(MockJob, :arg)
+
+        assert job = get_job_by_id(pg, job.id)
+
+        assert %Rihanna.Job{} = job
+        assert %DateTime{} = job.enqueued_at
+        assert job.due_at |> is_nil
+        assert job.fail_reason |> is_nil
+        assert job.failed_at |> is_nil
+        assert job.term == {Rihanna.Mocks.MockJob, :arg}
+
+        assert {:ok, _} = Rihanna.delete(job.id)
+
+        refute get_job_by_id(pg, job.id)
       end
     end
   end

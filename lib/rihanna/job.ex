@@ -94,8 +94,7 @@ defmodule Rihanna.Job do
     now = DateTime.utc_now()
 
     result =
-      Postgrex.query(
-        Rihanna.Job.Postgrex,
+      producer_query(
         """
           INSERT INTO "#{table()}" (term, enqueued_at, due_at)
           VALUES ($1, $2, $3)
@@ -151,13 +150,11 @@ defmodule Rihanna.Job do
   def from_sql([]), do: []
 
   @doc false
-  def retry_failed(pg \\ Rihanna.Job.Postgrex, job_id)
-      when (is_pid(pg) or is_atom(pg)) and is_integer(job_id) do
+  def retry_failed(job_id) when is_integer(job_id) do
     now = DateTime.utc_now()
 
-    result =
-      Postgrex.query!(
-        pg,
+    {:ok, result} =
+      producer_query(
         """
           UPDATE "#{table()}"
           SET
@@ -180,10 +177,9 @@ defmodule Rihanna.Job do
   end
 
   @doc false
-  def delete(pg \\ Rihanna.Job.Postgrex, job_id) do
+  def delete(job_id) do
     result =
-      Postgrex.query(
-        pg,
+      producer_query(
         """
           DELETE FROM "#{table()}"
           WHERE
@@ -362,5 +358,20 @@ defmodule Rihanna.Job do
       # If they implemented the behaviour, there will only ever be one arg
       job_module.after_error(reason, arg)
     end
+  end
+
+  # Some operations can use the shared database connection as they don't use locks
+  defp producer_query(query, args) do
+    producer_query(Rihanna.Config.producer_postgres_connection(), query, args)
+  end
+
+  if Code.ensure_compiled?(Ecto) do
+    defp producer_query({Ecto, repo}, query, args) do
+      Ecto.Adapters.SQL.query(repo, query, args)
+    end
+  end
+
+  defp producer_query({Postgrex, conn}, query, args) do
+    Postgrex.query(conn, query, args)
   end
 end

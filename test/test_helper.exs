@@ -1,9 +1,11 @@
 {:ok, _} = Application.ensure_all_started(:postgrex)
+{:ok, _} = Application.ensure_all_started(:ecto)
+
+postgrex_config = Application.fetch_env!(:rihanna, :postgrex)
 
 {:ok, _} =
-  Postgrex.start_link(
-    Application.fetch_env!(:rihanna, :postgrex)
-    |> Keyword.put(:name, Rihanna.Job.Postgrex)
-  )
+  postgrex_config
+  |> Keyword.put(:name, Rihanna.Job.Postgrex)
+  |> Postgrex.start_link()
 
 ExUnit.start(capture_log: true)
