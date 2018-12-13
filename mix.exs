@@ -4,7 +4,7 @@ defmodule Rihanna.MixProject do
   def project do
     [
       app: :rihanna,
-      version: "1.1.4",
+      version: "1.2.0",
       elixir: "~> 1.5",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
@@ -59,7 +59,7 @@ defmodule Rihanna.MixProject do
     [
       description: "Rihanna is a database-backed job queue.",
       licenses: ["MIT"],
-      maintainers: ["sampdavies@gmail.com"],
+      maintainers: ["sampdavies@gmail.com", "louis@lpil.uk"],
       links: %{"GitHub" => "https://github.com/samphilipd/rihanna"}
     ]
   end
