@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Schedule and enqueue functions now raise errors with greater detail when
+  given incorrect arguments.
+
 ## v1.2.0
 
 - Add support for enqueuing job via a user supplied Postgres connection. This
