@@ -1,9 +1,10 @@
 # Changelog
 
-## Unreleased
+## v1.2.1
 
 - Schedule and enqueue functions now raise errors with greater detail when
   given incorrect arguments.
+- Fix bug when creating index using a custom table name
 
 ## v1.2.0
 
