@@ -80,8 +80,8 @@ defmodule Rihanna.JobDispatcher do
 
   defp job_raised(%{id: id, term: {job_module, arg}}, reason, pg) do
     # NOTE: Do we need to demonitor here?
-    Rihanna.Job.after_error(job_module, reason, arg)
     Rihanna.Job.mark_failed(pg, id, DateTime.utc_now(), Exception.format_exit(reason))
+    Rihanna.Job.after_error(job_module, reason, arg)
   end
 
   defp job_raised(job, reason, pg) do
@@ -91,14 +91,14 @@ defmodule Rihanna.JobDispatcher do
 
   defp job_failure(%{id: id, term: {job_module, arg}}, reason, pg) do
     # NOTE: Do we need to demonitor here?
-    Rihanna.Job.after_error(job_module, reason, arg)
-
     Rihanna.Job.mark_failed(
       pg,
       id,
       DateTime.utc_now(),
       "Job Failed\n#{inspect(reason, limit: :infinity)}"
     )
+
+    Rihanna.Job.after_error(job_module, reason, arg)
   end
 
   defp job_failure(job, reason, pg) do

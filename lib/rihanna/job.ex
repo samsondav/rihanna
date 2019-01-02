@@ -356,7 +356,11 @@ defmodule Rihanna.Job do
   def after_error(job_module, reason, arg) do
     if :erlang.function_exported(job_module, :after_error, 2) do
       # If they implemented the behaviour, there will only ever be one arg
-      job_module.after_error(reason, arg)
+      try do
+        job_module.after_error(reason, arg)
+      rescue
+        _ -> :noop
+      end
     end
   end
 
