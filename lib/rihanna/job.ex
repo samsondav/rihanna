@@ -359,7 +359,23 @@ defmodule Rihanna.Job do
       try do
         job_module.after_error(reason, arg)
       rescue
-        _ -> :noop
+        exception ->
+          Logger.warn(
+            """
+            [Rihanna] After error callback failed
+            Got an unexpected error while trying to run the `after_error` callback.
+            Check your `#{inspect(job_module)}.after_error/2` callback and make sure it doesn’t raise.
+            Exception: #{inspect(exception)}
+            Arg1: #{inspect(reason)}
+            Arg2: #{inspect(arg)}
+            """,
+            exception: exception,
+            job_arguments: arg,
+            job_failure_reason: reason,
+            job_module: job_module
+          )
+
+          :noop
       end
     end
   end
