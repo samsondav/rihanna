@@ -62,6 +62,31 @@ defmodule Rihanna.Mocks do
     end
   end
 
+  defmodule ErrorBehaviourWithBadAfterErrorMock do
+    @behaviour Rihanna.Job
+
+    def perform([pid, msg]) do
+      Process.send(pid, {msg, self()}, [])
+      :error
+    end
+
+    def after_error(:error, [pid, _]) do
+      raise "Kaboom!"
+    end
+  end
+
+  defmodule BadBehaviourWithBadAfterErrorMock do
+    @behaviour Rihanna.Job
+
+    def perform(_) do
+      raise "Kaboom!"
+    end
+
+    def after_error(_reason, _args) do
+      raise "Double kaboom!"
+    end
+  end
+
   defmodule MFAMock do
     def fun(pid, msg) do
       Process.send(pid, {msg, self()}, [])

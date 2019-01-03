@@ -8,7 +8,9 @@ defmodule Rihanna.JobDispatcherTest do
     BehaviourMock,
     MFAMock,
     BadMFAMock,
+    BadBehaviourWithBadAfterErrorMock,
     ErrorBehaviourMock,
+    ErrorBehaviourWithBadAfterErrorMock,
     ErrorTupleBehaviourMock
   }
 
@@ -326,6 +328,72 @@ defmodule Rihanna.JobDispatcherTest do
       {:ok, %{id: _}} = Rihanna.Job.enqueue({BadMFAMock, [self(), :ok]})
       wait_for_task_execution()
       assert_received "After error callback"
+    end
+  end
+
+  describe "handle_info/2 with job that fails and its after_error raises" do
+    setup do
+      {:ok, dispatcher} =
+        Rihanna.JobDispatcher.start_link([db: Application.fetch_env!(:rihanna, :postgrex)], [])
+
+      {:ok, %{dispatcher: dispatcher}}
+    end
+
+    test "marks job as failed", %{pg: pg} do
+      ref = make_ref()
+      {:ok, %{id: id}} = Rihanna.Job.enqueue({ErrorBehaviourWithBadAfterErrorMock, [self(), ref]})
+
+      wait_for_task_execution()
+
+      assert_received {^ref, _}
+
+      %Rihanna.Job{fail_reason: reason, failed_at: failed_at} = get_job_by_id(pg, id)
+      assert reason == "Job Failed\n:error"
+      assert %DateTime{} = failed_at
+    end
+
+    test "removes task from state", %{dispatcher: dispatcher} do
+      ref = make_ref()
+      {:ok, %{id: id}} = Rihanna.Job.enqueue({ErrorBehaviourWithBadAfterErrorMock, [self(), ref]})
+
+      wait_for_task_execution()
+
+      assert_received {^ref, _}
+      state = :sys.get_state(dispatcher)
+
+      refute Enum.any?(state.working)
+      assert is_pid(state.pg)
+    end
+  end
+
+  describe "handle_info/2 with job that raises error and its after_error raises too" do
+    setup do
+      {:ok, dispatcher} =
+        Rihanna.JobDispatcher.start_link([db: Application.fetch_env!(:rihanna, :postgrex)], [])
+
+      {:ok, %{dispatcher: dispatcher}}
+    end
+
+    test "marks job as failed", %{pg: pg} do
+      {:ok, %{id: id}} = Rihanna.Job.enqueue({BadBehaviourWithBadAfterErrorMock, [:ok]})
+
+      wait_for_task_execution()
+
+      job = get_job_by_id(pg, id)
+
+      assert %DateTime{} = job.failed_at
+      assert "an exception was raised:\n    ** (RuntimeError) Kaboom!" <> _rest = job.fail_reason
+    end
+
+    test "removes task from state", %{dispatcher: dispatcher} do
+      Rihanna.Job.enqueue({BadBehaviourWithBadAfterErrorMock, [:ok]})
+
+      wait_for_task_execution()
+
+      state = :sys.get_state(dispatcher)
+
+      refute Enum.any?(state.working)
+      assert is_pid(state.pg)
     end
   end
 
