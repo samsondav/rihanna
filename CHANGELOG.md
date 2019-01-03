@@ -1,5 +1,10 @@
 # Changelog
 
+## v1.2.2
+
+- Rescue after_error callback errors to stop a potential infinite retry loop
+  for a job.
+
 ## v1.2.1
 
 - Schedule and enqueue functions now raise errors with greater detail when
