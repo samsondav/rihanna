@@ -70,7 +70,7 @@ defmodule Rihanna.Mocks do
       :error
     end
 
-    def after_error(:error, [pid, _]) do
+    def after_error(:error, [_pid, _]) do
       raise "Kaboom!"
     end
   end

@@ -111,8 +111,8 @@ defmodule ScheduleJobTest do
 
   defp due_in(due_in) do
     DateTime.utc_now()
-    |> DateTime.to_unix(:milliseconds)
+    |> DateTime.to_unix(:millisecond)
     |> Kernel.+(due_in)
-    |> DateTime.from_unix!(:milliseconds)
+    |> DateTime.from_unix!(:millisecond)
   end
 end

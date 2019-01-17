@@ -178,8 +178,8 @@ defmodule Rihanna do
   defp due_at(at: %DateTime{} = due_at), do: due_at
 
   defp due_at(in: due_in) when is_integer(due_in) and due_in > 0 do
-    now = DateTime.utc_now() |> DateTime.to_unix(:milliseconds)
+    now = DateTime.utc_now() |> DateTime.to_unix(:millisecond)
 
-    DateTime.from_unix!(now + due_in, :milliseconds)
+    DateTime.from_unix!(now + due_in, :millisecond)
   end
 end
