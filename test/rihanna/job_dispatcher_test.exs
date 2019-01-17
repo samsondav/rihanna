@@ -354,7 +354,9 @@ defmodule Rihanna.JobDispatcherTest do
 
     test "removes task from state", %{dispatcher: dispatcher} do
       ref = make_ref()
-      {:ok, %{id: id}} = Rihanna.Job.enqueue({ErrorBehaviourWithBadAfterErrorMock, [self(), ref]})
+
+      {:ok, %{id: _id}} =
+        Rihanna.Job.enqueue({ErrorBehaviourWithBadAfterErrorMock, [self(), ref]})
 
       wait_for_task_execution()
 

@@ -8,7 +8,7 @@ matrix:
       otp_release: '18.0'
     - elixir: '1.7.1'
       otp_release: '20.0'
-    - elixir: '1.7.1'
+    - elixir: '1.8.0'
       otp_release: '21.0'
 
 addons:
