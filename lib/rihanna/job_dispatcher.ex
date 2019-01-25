@@ -7,13 +7,14 @@ defmodule Rihanna.JobDispatcher do
   @moduledoc false
 
   def start_link(config, opts) do
-    db = Keyword.get(config, :db)
-
-    GenServer.start_link(__MODULE__, db, opts)
+    GenServer.start_link(__MODULE__, config, opts)
   end
 
   @doc false
-  def init(db) do
+  def init(config) do
+    db = Keyword.get(config, :db)
+    startup_delay = Keyword.get(config, :startup_delay, @startup_delay)
+
     # NOTE: These are linked because it is important that the pg session is also
     # killed if the JobDispatcher dies since otherwise we may leave dangling
     # locks in the zombie pg process
@@ -23,7 +24,7 @@ defmodule Rihanna.JobDispatcher do
 
     # Use a startup delay to avoid killing the supervisor if we can't connect
     # to the database for some reason.
-    Process.send_after(self(), :initialise, @startup_delay)
+    Process.send_after(self(), :initialise, startup_delay)
     {:ok, state}
   end
 

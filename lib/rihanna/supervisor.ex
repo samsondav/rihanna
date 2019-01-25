@@ -29,10 +29,8 @@ defmodule Rihanna.Supervisor do
   """
 
   def start_link(config, opts \\ []) do
-    {db, config} = Keyword.pop_first(config, :postgrex, [])
-
-    case db do
-      [] ->
+    case Keyword.pop_first(config, :postgrex) do
+      {nil, _} ->
         raise """
         Could not start Rihanna - database configuration was missing. Did you forget to pass postgres configuration into Rihanna.Supervisor?
 
@@ -43,21 +41,21 @@ defmodule Rihanna.Supervisor do
         ]
         """
 
-      db ->
+      {db, config} ->
         db = Keyword.take(db, [:username, :password, :database, :hostname, :port, :ssl])
-        Supervisor.start_link(__MODULE__, {db, config}, opts)
+        Supervisor.start_link(__MODULE__, Keyword.merge(config, [db: db]), opts)
     end
   end
 
   @doc false
-  def init({db, _config}) do
+  def init(config) do
     children =
       [
-        producer_postgres_connection(db),
+        producer_postgres_connection(Keyword.get(config, :db)),
         {Task.Supervisor, name: Rihanna.TaskSupervisor},
         %{
           id: Rihanna.JobDispatcher,
-          start: {Rihanna.JobDispatcher, :start_link, [[db: db], [name: Rihanna.JobDispatcher]]}
+          start: {Rihanna.JobDispatcher, :start_link, [config, [name: Rihanna.JobDispatcher]]}
         }
       ]
       |> Enum.filter(& &1)
