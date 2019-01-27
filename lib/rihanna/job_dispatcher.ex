@@ -2,7 +2,6 @@ defmodule Rihanna.JobDispatcher do
   use GenServer
 
   @task_supervisor Rihanna.TaskSupervisor
-  @startup_delay if Mix.env() == :test, do: 0, else: :timer.seconds(5)
 
   @moduledoc false
 
@@ -13,7 +12,7 @@ defmodule Rihanna.JobDispatcher do
   @doc false
   def init(config) do
     db = Keyword.get(config, :db)
-    startup_delay = Keyword.get(config, :startup_delay, @startup_delay)
+    startup_delay = Rihanna.Config.startup_delay()
 
     # NOTE: These are linked because it is important that the pg session is also
     # killed if the JobDispatcher dies since otherwise we may leave dangling

@@ -149,4 +149,18 @@ defmodule Rihanna.Config do
   def producer_postgres_connection_supplied? do
     Application.get_env(:rihanna, :producer_postgres_connection, false)
   end
+
+  @doc """
+  # Use a startup delay to avoid killing the supervisor if we can't connect
+  # to the database for some reason. Value is in milliseconds.
+
+  # Defaults to 0 for test env and 5000ms for other envs.
+  """
+  def startup_delay do
+    Application.get_env(
+      :rihanna,
+      :startup_delay,
+      if(Mix.env() == :test, do: 0, else: :timer.seconds(5))
+    )
+  end
 end
