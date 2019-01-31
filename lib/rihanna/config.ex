@@ -151,10 +151,16 @@ defmodule Rihanna.Config do
   end
 
   @doc """
-  # Use a startup delay to avoid killing the supervisor if we can't connect
-  # to the database for some reason. Value is in milliseconds.
+  Use a startup delay to avoid killing the supervisor if we can't connect
+  to the database for some reason. Value is in milliseconds.
 
-  # Defaults to 0 for test env and 5000ms for other envs.
+  Defaults to 0 for test env and 5000ms for other envs.
+
+  ## Example
+
+  ```
+  config :rihanna, startup_delay: :timer.milliseconds(500)
+  ```
   """
   def startup_delay do
     Application.get_env(
