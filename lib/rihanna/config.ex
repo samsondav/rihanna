@@ -19,6 +19,9 @@ defmodule Rihanna.Config do
   config :rihanna, jobs_table_name: "my_jobs"
   ```
   """
+
+  @default_startup_delay if(Mix.env() == :test, do: 0, else: :timer.seconds(5))
+
   def jobs_table_name() do
     Application.get_env(:rihanna, :jobs_table_name, "rihanna_jobs")
   end
@@ -166,7 +169,7 @@ defmodule Rihanna.Config do
     Application.get_env(
       :rihanna,
       :startup_delay,
-      if(Mix.env() == :test, do: 0, else: :timer.seconds(5))
+      @default_startup_delay
     )
   end
 end
