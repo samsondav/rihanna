@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.3.0
+
+- The startup delay for the job dispatcher is now configurable.
+
 ## v1.2.2
 
 - Rescue after_error callback errors to stop a potential infinite retry loop
