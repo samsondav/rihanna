@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.3.1
+
+- Fix incorrect index name being used with custom table name.
+
 ## v1.3.0
 
 - The startup delay for the job dispatcher is now configurable.
