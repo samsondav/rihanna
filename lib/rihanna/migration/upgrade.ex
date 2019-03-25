@@ -72,6 +72,9 @@ defmodule Rihanna.Migration.Upgrade do
       """,
       """
       ALTER TABLE #{table_name} DROP COLUMN rihanna_internal_meta;
+      """,
+      """
+      ALTER TABLE #{table_name} DROP COLUMN priority;
       """
     ]
   end
@@ -116,6 +119,9 @@ defmodule Rihanna.Migration.Upgrade do
       """,
       """
       CREATE INDEX IF NOT EXISTS rihanna_jobs_enqueued_at_id ON rihanna_jobs (enqueued_at ASC, id ASC);
+      """,
+      """
+      ALTER TABLE #{table_name} ADD COLUMN priority integer NOT NULL DEFAULT 19;
       """
     ]
   end
