@@ -136,7 +136,7 @@ defmodule Rihanna.Migration do
       ADD CONSTRAINT #{table_name}_pkey PRIMARY KEY (id);
       """,
       """
-      CREATE INDEX #{table_name}_enqueued_at_id ON #{table_name} (enqueued_at ASC, id ASC);
+      CREATE INDEX #{table_name}_enqueued_at_id ON #{table_name} (priority ASC, enqueued_at ASC, id ASC);
       """
     ]
   end
