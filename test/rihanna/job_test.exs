@@ -102,6 +102,14 @@ defmodule Rihanna.JobTest do
       assert length(locked) == 3
     end
 
+    test "locks all available jobs, ordered with the highest priority first", %{pg: pg} do
+      insert_job(pg, :ready_to_run_highest_priority)
+
+      [ first_job | _rest ] = lock(pg, 5)
+
+      assert %Rihanna.Job{priority: -19} = first_job
+    end
+
     test "locks all available jobs if equal to N", %{pg: pg, jobs: jobs} do
       locked = lock(pg, 3)
 

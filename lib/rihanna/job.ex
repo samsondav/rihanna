@@ -67,7 +67,8 @@ defmodule Rihanna.Job do
     :enqueued_at,
     :due_at,
     :failed_at,
-    :fail_reason
+    :fail_reason,
+    :priority
   ]
 
   defstruct @fields
@@ -87,6 +88,14 @@ defmodule Rihanna.Job do
     GenServer.call(Rihanna.JobManager, job)
   end
 
+  @doc """
+  The priority of this job.
+
+  Conforms to the niceness values used in Linux processes — lower values
+  are more important.
+  """
+  def priority, do: 19
+
   @doc false
   def enqueue(term, due_at \\ nil) do
     serialized_term = :erlang.term_to_binary(term)
@@ -96,11 +105,11 @@ defmodule Rihanna.Job do
     result =
       producer_query(
         """
-          INSERT INTO "#{table()}" (term, enqueued_at, due_at)
-          VALUES ($1, $2, $3)
+          INSERT INTO "#{table()}" (term, enqueued_at, due_at, priority)
+          VALUES ($1, $2, $3, $4)
           RETURNING #{@sql_fields}
         """,
-        [serialized_term, now, due_at]
+        [serialized_term, now, due_at, priority()]
       )
 
     case result do
@@ -134,7 +143,8 @@ defmodule Rihanna.Job do
         enqueued_at,
         due_at,
         failed_at,
-        fail_reason
+        fail_reason,
+        priority
       ]) do
     %__MODULE__{
       id: id,
@@ -142,7 +152,8 @@ defmodule Rihanna.Job do
       enqueued_at: enqueued_at,
       due_at: due_at,
       failed_at: failed_at,
-      fail_reason: fail_reason
+      fail_reason: fail_reason,
+      priority: priority
     }
   end
 
@@ -252,7 +263,7 @@ defmodule Rihanna.Job do
           WHERE NOT (id = ANY($3))
           AND (due_at IS NULL OR due_at <= now())
           AND failed_at IS NULL
-          ORDER BY enqueued_at, j.id
+          ORDER BY priority, enqueued_at, j.id
           FOR UPDATE OF j SKIP LOCKED
           LIMIT 1
         ) AS t1
@@ -266,7 +277,7 @@ defmodule Rihanna.Job do
               AND (due_at IS NULL OR due_at <= now())
               AND failed_at IS NULL
               AND (j.enqueued_at, j.id) > (jobs.enqueued_at, jobs.id)
-              ORDER BY enqueued_at, j.id
+              ORDER BY priority, enqueued_at, j.id
               FOR UPDATE OF j SKIP LOCKED
               LIMIT 1
             ) AS j

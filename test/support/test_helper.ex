@@ -61,7 +61,7 @@ defmodule TestHelper do
       exec.(
         conn,
         """
-        SELECT id, term, enqueued_at, due_at, failed_at, fail_reason FROM "rihanna_jobs" WHERE id = $1
+        SELECT id, term, enqueued_at, due_at, failed_at, fail_reason, priority FROM "rihanna_jobs" WHERE id = $1
         """,
         [id]
       )
@@ -81,7 +81,24 @@ defmodule TestHelper do
         """
           INSERT INTO "rihanna_jobs" (term, enqueued_at)
           VALUES ($1, '2018-01-01')
-          RETURNING id, term, enqueued_at, due_at, failed_at, fail_reason
+          RETURNING id, term, enqueued_at, due_at, failed_at, fail_reason, priority
+        """,
+        [:erlang.term_to_binary(@test_term)]
+      )
+
+    [job] = Rihanna.Job.from_sql(result.rows)
+
+    job
+  end
+
+  def insert_job(pg, :ready_to_run_highest_priority) do
+    result =
+      Postgrex.query!(
+        pg,
+        """
+          INSERT INTO "rihanna_jobs" (term, enqueued_at, priority)
+          VALUES ($1, '2018-01-01', -19)
+          RETURNING id, term, enqueued_at, due_at, failed_at, fail_reason, priority
         """,
         [:erlang.term_to_binary(@test_term)]
       )
@@ -99,7 +116,7 @@ defmodule TestHelper do
         """
           INSERT INTO "rihanna_jobs" (term, enqueued_at, due_at)
           VALUES ($1, '2018-01-01', now() + interval '1 minute')
-          RETURNING id, term, enqueued_at, due_at, failed_at, fail_reason
+          RETURNING id, term, enqueued_at, due_at, failed_at, fail_reason, priority
         """,
         [:erlang.term_to_binary(@test_term)]
       )
@@ -117,7 +134,7 @@ defmodule TestHelper do
         """
           INSERT INTO "rihanna_jobs" (term, enqueued_at, due_at)
           VALUES ($1, '2018-01-01', now())
-          RETURNING id, term, enqueued_at, due_at, failed_at, fail_reason
+          RETURNING id, term, enqueued_at, due_at, failed_at, fail_reason, priority
         """,
         [:erlang.term_to_binary(@test_term)]
       )
@@ -139,7 +156,7 @@ defmodule TestHelper do
           fail_reason
         )
         VALUES ($1, '2018-01-01', '2018-01-02', 'Kaboom!')
-        RETURNING id, term, enqueued_at, due_at, failed_at, fail_reason
+        RETURNING id, term, enqueued_at, due_at, failed_at, fail_reason, priority
         """,
         [:erlang.term_to_binary(@test_term)]
       )
