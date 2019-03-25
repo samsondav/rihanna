@@ -104,6 +104,7 @@ defmodule Rihanna.Migration do
       CREATE TABLE #{table_name} (
         id int NOT NULL,
         term bytea NOT NULL,
+        priority integer NOT NULL DEFAULT 19,
         enqueued_at timestamp with time zone NOT NULL,
         due_at timestamp with time zone,
         failed_at timestamp with time zone,
