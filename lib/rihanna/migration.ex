@@ -213,7 +213,7 @@ defmodule Rihanna.Migration do
   @doc false
   # Check that the required upgrades have been added
   def check_upgrade_not_required!(pg) do
-    required_upgrade_columns = ["due_at", "rihanna_internal_meta"]
+    required_upgrade_columns = ["due_at", "rihanna_internal_meta", "priority"]
     table_name = Rihanna.Job.table()
 
     case Postgrex.query(
