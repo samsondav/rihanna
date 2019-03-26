@@ -105,7 +105,7 @@ defmodule Rihanna.JobTest do
     test "locks all available jobs, ordered with the highest priority first", %{pg: pg} do
       insert_job(pg, :ready_to_run_highest_priority)
 
-      [ first_job | _rest ] = lock(pg, 5)
+      [first_job | _rest] = lock(pg, 5)
 
       assert %Rihanna.Job{priority: -19} = first_job
     end
