@@ -97,7 +97,7 @@ defmodule TestHelper do
         pg,
         """
           INSERT INTO "rihanna_jobs" (term, enqueued_at, priority)
-          VALUES ($1, '2018-01-01', -19)
+          VALUES ($1, '2018-01-01', 1)
           RETURNING id, term, enqueued_at, due_at, failed_at, fail_reason, priority
         """,
         [:erlang.term_to_binary(@test_term)]

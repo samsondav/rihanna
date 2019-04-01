@@ -91,10 +91,9 @@ defmodule Rihanna.Job do
   @doc """
   The priority of this job.
 
-  Conforms to the niceness values used in Linux processes — lower values
-  are more important.
+  A higher value means a higher job priority. Has a default of 0.
   """
-  def priority, do: 19
+  def priority, do: 0
 
   @doc false
   def enqueue(term, due_at \\ nil) do
@@ -263,7 +262,7 @@ defmodule Rihanna.Job do
           WHERE NOT (id = ANY($3))
           AND (due_at IS NULL OR due_at <= now())
           AND failed_at IS NULL
-          ORDER BY priority, enqueued_at, j.id
+          ORDER BY priority DESC, enqueued_at, j.id
           FOR UPDATE OF j SKIP LOCKED
           LIMIT 1
         ) AS t1
@@ -277,7 +276,7 @@ defmodule Rihanna.Job do
               AND (due_at IS NULL OR due_at <= now())
               AND failed_at IS NULL
               AND (j.enqueued_at, j.id) > (jobs.enqueued_at, jobs.id)
-              ORDER BY priority, enqueued_at, j.id
+              ORDER BY priority DESC, enqueued_at, j.id
               FOR UPDATE OF j SKIP LOCKED
               LIMIT 1
             ) AS j

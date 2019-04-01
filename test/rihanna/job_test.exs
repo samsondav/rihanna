@@ -107,7 +107,7 @@ defmodule Rihanna.JobTest do
 
       [first_job | _rest] = lock(pg, 5)
 
-      assert %Rihanna.Job{priority: -19} = first_job
+      assert %Rihanna.Job{priority: 1} = first_job
     end
 
     test "locks all available jobs if equal to N", %{pg: pg, jobs: jobs} do
