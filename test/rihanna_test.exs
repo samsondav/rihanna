@@ -20,7 +20,7 @@ defmodule RihannaTest do
       assert job.due_at |> is_nil
       assert job.fail_reason |> is_nil
       assert job.failed_at |> is_nil
-      assert job.priority == 19
+      assert job.priority == 0
       assert job.term == @term
     end
 
@@ -34,7 +34,7 @@ defmodule RihannaTest do
       assert job.due_at |> is_nil
       assert job.fail_reason |> is_nil
       assert job.failed_at |> is_nil
-      assert job.priority == 19
+      assert job.priority == 0
       assert job.term == @term
     end
 
@@ -69,7 +69,7 @@ defmodule RihannaTest do
       assert job.due_at |> is_nil
       assert job.fail_reason |> is_nil
       assert job.failed_at |> is_nil
-      assert job.priority == 19
+      assert job.priority == 0
       assert job.term == {Rihanna.Mocks.MockJob, :arg}
     end
 
@@ -83,7 +83,7 @@ defmodule RihannaTest do
       assert job.due_at |> is_nil
       assert job.fail_reason |> is_nil
       assert job.failed_at |> is_nil
-      assert job.priority == 19
+      assert job.priority == 0
       assert job.term == {Rihanna.Mocks.MockJob, :arg}
     end
 
@@ -126,7 +126,7 @@ defmodule RihannaTest do
           assert job.due_at |> is_nil
           assert job.fail_reason |> is_nil
           assert job.failed_at |> is_nil
-          assert job.priority == 19
+          assert job.priority == 0
           assert job.term == {Rihanna.Mocks.MockJob, :arg}
 
           assert {:ok, _} = Rihanna.delete(job.id)
@@ -149,7 +149,7 @@ defmodule RihannaTest do
         assert job.due_at |> is_nil
         assert job.fail_reason |> is_nil
         assert job.failed_at |> is_nil
-        assert job.priority == 19
+        assert job.priority == 0
         assert job.term == {Rihanna.Mocks.MockJob, :arg}
 
         assert {:ok, _} = Rihanna.delete(job.id)

@@ -131,7 +131,7 @@ defmodule Rihanna.Migration.Upgrade do
       """
       DO $$
           BEGIN
-              ALTER TABLE #{table_name} ADD COLUMN priority integer NOT NULL DEFAULT 19;
+              ALTER TABLE #{table_name} ADD COLUMN priority integer NOT NULL DEFAULT 0;
           EXCEPTION
               WHEN duplicate_column THEN
               RAISE NOTICE 'column already exists in #{table_name}.';
@@ -142,7 +142,7 @@ defmodule Rihanna.Migration.Upgrade do
       DO $$
           BEGIN
               DROP INDEX IF EXISTS rihanna_jobs_enqueued_at_id;
-              CREATE INDEX IF NOT EXISTS rihanna_jobs_priority_enqueued_at_id ON rihanna_jobs (priority ASC, enqueued_at ASC, id ASC);
+              CREATE INDEX IF NOT EXISTS rihanna_jobs_priority_enqueued_at_id ON rihanna_jobs (priority DESC, enqueued_at ASC, id ASC);
           END;
       $$
       """
