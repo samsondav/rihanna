@@ -189,6 +189,13 @@ defmodule Rihanna do
     ```
     Rihanna.delete_by(mod: Module, func: :function)
     ```
+
+  Deletes all jobs for the module Module
+
+    ```
+    Rihanna.delete_by(mod: Module)
+    ```
+
   """
   @spec delete_by(list()) :: {:ok, :deleted} | {:error, :job_not_found}
   def delete_by(opts) when is_list(opts) do

@@ -1,2 +1,3 @@
 elixir 1.8.1
 erlang 21.2
+postgres 9.6.12
