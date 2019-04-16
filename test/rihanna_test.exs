@@ -4,7 +4,7 @@ defmodule RihannaTest do
 
   import Rihanna
   import TestHelper
-  alias Rihanna.Mocks.MockJob
+  alias Rihanna.Mocks.{MockJob, LongJob}
   require TemporaryEnv
 
   @term {IO, :puts, ["Work, work, work, work, work."]}
@@ -182,6 +182,64 @@ defmodule RihannaTest do
     test "returns error if job does not exist", %{pg: pg} do
       assert Rihanna.delete(1) == {:error, :job_not_found}
       refute get_job_by_id(pg, 1)
+    end
+  end
+
+  describe "delete_by/1" do
+    setup [:create_jobs_table]
+
+    test "deletes a job that has the same mod and func and nothing else", %{pg: pg} do
+      {:ok, job} = Rihanna.enqueue(MockJob, :arg)
+      {:ok, bystander_job1} = Rihanna.enqueue(MockJob, :foo)
+      {:ok, bystander_job2} = Rihanna.enqueue(LongJob, :arg)
+      {:ok, bystander_job3} = Rihanna.enqueue(LongJob, :foo)
+
+      assert {:ok, :deleted} = Rihanna.delete_by(mod: MockJob, fun: :arg)
+
+      refute get_job_by_id(pg, job.id)
+      refute is_nil(get_job_by_id(pg, bystander_job1.id))
+      refute is_nil(get_job_by_id(pg, bystander_job2.id))
+      refute is_nil(get_job_by_id(pg, bystander_job3.id))
+    end
+
+    test "deletes a job that has the same mod", %{pg: pg} do
+      {:ok, job} = Rihanna.enqueue(MockJob, :arg)
+      {:ok, job2} = Rihanna.enqueue(MockJob, :foo)
+      {:ok, bystander_job2} = Rihanna.enqueue(LongJob, :arg)
+      {:ok, bystander_job3} = Rihanna.enqueue(LongJob, :foo)
+
+      assert {:ok, :deleted} = Rihanna.delete_by(mod: MockJob)
+
+      refute get_job_by_id(pg, job.id)
+      refute get_job_by_id(pg, job2.id)
+      refute is_nil(get_job_by_id(pg, bystander_job2.id))
+      refute is_nil(get_job_by_id(pg, bystander_job3.id))
+    end
+
+    test "deletes a job that has the same fun", %{pg: pg} do
+      {:ok, job} = Rihanna.enqueue(MockJob, :arg)
+      {:ok, bystander_job1} = Rihanna.enqueue(MockJob, :foo)
+      {:ok, job2} = Rihanna.enqueue(LongJob, :arg)
+      {:ok, bystander_job3} = Rihanna.enqueue(LongJob, :foo)
+
+      assert {:ok, :deleted} = Rihanna.delete_by(fun: :arg)
+
+      refute get_job_by_id(pg, job.id)
+      refute get_job_by_id(pg, job2.id)
+      refute is_nil(get_job_by_id(pg, bystander_job1.id))
+      refute is_nil(get_job_by_id(pg, bystander_job3.id))
+    end
+
+    test "doesn't delete anything if there are no matches", %{pg: pg} do
+      {:ok, bystander_job1} = Rihanna.enqueue(MockJob, :foo)
+      {:ok, bystander_job2} = Rihanna.enqueue(LongJob, :arg)
+      {:ok, bystander_job3} = Rihanna.enqueue(LongJob, :foo)
+
+      assert {:error, :job_not_found} = Rihanna.delete_by(mod: MockJob, fun: :arg)
+
+      refute is_nil(get_job_by_id(pg, bystander_job1.id))
+      refute is_nil(get_job_by_id(pg, bystander_job2.id))
+      refute is_nil(get_job_by_id(pg, bystander_job3.id))
     end
   end
 

@@ -223,46 +223,49 @@ defmodule Rihanna.Job do
   end
 
   @doc false
-  def delete_by(opts) when is_list(opts) do
-    mod = Map.get(opts, :mod)
-    fun = Map.get(opts, :fun)
-
+  def delete_by(opts) do
     ids_to_delete =
-      filter_term_list(mod: mod, fun: fun)
-      |> Enum.reduce("(", fn {id, _term}, acc ->
+      opts
+      |> filter_term_list()
+      |> Enum.reduce("", fn [id, _term], acc ->
         "#{acc}'#{id}',"
       end)
-      |> String.replace_suffix(",", ")")
+      |> String.replace_trailing(",", "")
 
-    """
-       DELETE FROM "#{table()}"
-       WHERE id IN #{ids_to_delete}
-    """
-    |> producer_query(nil)
-    |> case do
-      {:ok, %Postgrex.Result{num_rows: 0}} ->
+    with false <- ids_to_delete == "",
+         {:ok, %Postgrex.Result{num_rows: num_rows}} when num_rows != 0 <-
+           producer_query(
+             """
+                DELETE FROM "#{table()}"
+                WHERE id IN (#{ids_to_delete})
+             """,
+             []
+           ) do
+      {:ok, :deleted}
+    else
+      true ->
         {:error, :job_not_found}
 
-      {:ok, _} ->
-        {:ok, :deleted}
+      {:ok, %Postgrex.Result{num_rows: 0}} ->
+        {:error, :job_not_found}
     end
   end
 
   defp filter_term_list(mod: mod, fun: fun) when not is_nil(mod) and not is_nil(fun) do
-    Enum.filter(retrieve_all_jobs(), fn {id, term} ->
-      match?({^mod, ^fun, _}, :erlang.binary_to_term(term))
+    Enum.filter(retrieve_all_jobs(), fn [_id, term] ->
+      match?({^mod, ^fun}, :erlang.binary_to_term(term))
     end)
   end
 
   defp filter_term_list(mod: mod) when not is_nil(mod) do
-    Enum.filter(retrieve_all_jobs(), fn {id, term} ->
-      match?({^mod, _, _}, :erlang.binary_to_term(term))
+    Enum.filter(retrieve_all_jobs(), fn [_id, term] ->
+      match?({^mod, _}, :erlang.binary_to_term(term))
     end)
   end
 
   defp filter_term_list(fun: fun) when not is_nil(fun) do
-    Enum.filter(retrieve_all_jobs(), fn {id, term} ->
-      match?({_, ^fun, _}, :erlang.binary_to_term(term))
+    Enum.filter(retrieve_all_jobs(), fn [_id, term] ->
+      match?({_, ^fun}, :erlang.binary_to_term(term))
     end)
   end
 
@@ -273,10 +276,10 @@ defmodule Rihanna.Job do
           SELECT id, term
           FROM "#{table()}"
         """,
-        nil
+        []
       )
 
-    result
+    result.rows
   end
 
   def delete(job_id) do
