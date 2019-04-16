@@ -184,16 +184,22 @@ defmodule Rihanna do
 
   ## Example
 
-  Deletes all jobs for Module.function
+  Deletes all jobs for `Module.function`
 
     ```
-    Rihanna.delete_by(mod: Module, func: :function)
+    Rihanna.delete_by(mod: Module, fun: :function)
     ```
 
-  Deletes all jobs for the module Module
+  Deletes all jobs for the module `Module`
 
     ```
     Rihanna.delete_by(mod: Module)
+    ```
+
+  Deletes all jobs for the function `function`
+
+    ```
+    Rihanna.delete_by(fun: :function)
     ```
 
   """
