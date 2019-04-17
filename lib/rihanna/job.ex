@@ -227,11 +227,7 @@ defmodule Rihanna.Job do
     ids_to_delete =
       opts
       |> filter_term_list()
-      |> Enum.reduce("", fn [id, _term], acc ->
-        "#{acc}'#{id}',"
-      end)
-      |> String.replace_trailing(",", "")
-      |> IO.inspect()
+      |> Enum.join(",")
 
     if ids_to_delete != "" do
       case producer_query(
@@ -256,20 +252,32 @@ defmodule Rihanna.Job do
   end
 
   defp filter_term_list(mod: mod, fun: fun) when not is_nil(mod) and not is_nil(fun) do
-    Enum.filter(retrieve_all_jobs(), fn [_id, term] ->
-      match?({^mod, ^fun}, :erlang.binary_to_term(term))
+    Enum.flat_map(retrieve_all_jobs(), fn [id, term] ->
+      if match?({^mod, ^fun}, :erlang.binary_to_term(term)) do
+        [id]
+      else
+        []
+      end
     end)
   end
 
   defp filter_term_list(mod: mod) when not is_nil(mod) do
-    Enum.filter(retrieve_all_jobs(), fn [_id, term] ->
-      match?({^mod, _}, :erlang.binary_to_term(term))
+    Enum.flat_map(retrieve_all_jobs(), fn [id, term] ->
+      if match?({^mod, _}, :erlang.binary_to_term(term)) do
+        [id]
+      else
+        []
+      end
     end)
   end
 
   defp filter_term_list(fun: fun) when not is_nil(fun) do
-    Enum.filter(retrieve_all_jobs(), fn [_id, term] ->
-      match?({_, ^fun}, :erlang.binary_to_term(term))
+    Enum.flat_map(retrieve_all_jobs(), fn [id, term] ->
+      if match?({_, ^fun}, :erlang.binary_to_term(term)) do
+        [id]
+      else
+        []
+      end
     end)
   end
 
