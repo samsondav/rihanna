@@ -231,23 +231,27 @@ defmodule Rihanna.Job do
         "#{acc}'#{id}',"
       end)
       |> String.replace_trailing(",", "")
+      |> IO.inspect()
 
-    with false <- ids_to_delete == "",
-         {:ok, %Postgrex.Result{num_rows: num_rows}} when num_rows != 0 <-
-           producer_query(
+    if ids_to_delete != "" do
+      case producer_query(
              """
                 DELETE FROM "#{table()}"
                 WHERE id IN (#{ids_to_delete})
              """,
              []
            ) do
-      {:ok, :deleted}
-    else
-      true ->
-        {:error, :job_not_found}
+        {:ok, %Postgrex.Result{num_rows: 0}} ->
+          {:error, :job_not_found}
 
-      {:ok, %Postgrex.Result{num_rows: 0}} ->
-        {:error, :job_not_found}
+        {:ok, _} ->
+          {:ok, :deleted}
+
+        error ->
+          error
+      end
+    else
+      {:error, :job_not_found}
     end
   end
 
