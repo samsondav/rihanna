@@ -233,7 +233,7 @@ defmodule RihannaTest do
     test "deletes a job that has args", %{pg: pg} do
       {:ok, job} =
         Rihanna.schedule({MockJob, :arg, [parameter: "parameter"]},
-          at: DateTime.add(DateTime.utc_now(), 10_000_000)
+          at: %DateTime{DateTime.utc_now() | year: DateTime.utc_now().year + 200}
         )
 
       assert {:ok, :deleted} = Rihanna.delete_by(mod: MockJob, fun: :arg)
