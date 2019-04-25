@@ -230,6 +230,17 @@ defmodule RihannaTest do
       refute is_nil(get_job_by_id(pg, bystander_job3.id))
     end
 
+    test "deletes a job that has args", %{pg: pg} do
+      {:ok, job} =
+        Rihanna.schedule({MockJob, :arg, [parameter: "parameter"]},
+          at: DateTime.add(DateTime.utc_now(), 10_000_000)
+        )
+
+      assert {:ok, :deleted} = Rihanna.delete_by(mod: MockJob, fun: :arg)
+
+      refute get_job_by_id(pg, job.id)
+    end
+
     test "doesn't delete anything if there are no matches", %{pg: pg} do
       {:ok, bystander_job1} = Rihanna.enqueue(MockJob, :foo)
       {:ok, bystander_job2} = Rihanna.enqueue(LongJob, :arg)
