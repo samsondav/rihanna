@@ -11,7 +11,7 @@ You might consider using Rihanna if:
 - You want ACID guarantees around your jobs so you can be 100% sure they will never be lost
 - You want a [beautiful web GUI](https://github.com/samphilipd/rihanna_ui) that allows you to inspect, delete and retry failed jobs
 - You want a simple queue that uses your existing Postgres database and doesn't require any additional services or dependencies
-- You need to process up to 10,000 jobs per second (if you need more throughout than this you should probably consider a "real" messaging system like Kafka or ActiveMQ)
+- You need to process up to 10,000 jobs per second (if you need more throughput than this you should probably consider a "real" messaging system like Kafka or ActiveMQ)
 - You want to pass arbitrary Elixir/Erlang terms that may not be JSON-serializable such as tuples or structs as arguments
 
 ## Contents
