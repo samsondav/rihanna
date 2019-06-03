@@ -104,7 +104,7 @@ defmodule Rihanna.Migration do
       CREATE TABLE #{table_name} (
         id int NOT NULL,
         term bytea NOT NULL,
-        priority integer NOT NULL DEFAULT 0,
+        priority integer NOT NULL DEFAULT 50,
         enqueued_at timestamp with time zone NOT NULL,
         due_at timestamp with time zone,
         failed_at timestamp with time zone,
@@ -136,7 +136,7 @@ defmodule Rihanna.Migration do
       ADD CONSTRAINT #{table_name}_pkey PRIMARY KEY (id);
       """,
       """
-      CREATE INDEX #{table_name}_priority_enqueued_at_id ON #{table_name} (priority DESC, enqueued_at ASC, id ASC);
+      CREATE INDEX #{table_name}_priority_enqueued_at_id ON #{table_name} (priority ASC, enqueued_at ASC, id ASC);
       """
     ]
   end

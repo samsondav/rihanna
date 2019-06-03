@@ -91,7 +91,11 @@ defmodule Rihanna do
     raise ArgumentError, @enqueue_help_message
   end
 
-  @type schedule_option :: {:at, DateTime.t()} | {:in, pos_integer}
+  @type schedule_option ::
+          {:at, DateTime.t()}
+          | {:in, pos_integer}
+          | {:due_at, DateTime.t()}
+          | {:priority, pos_integer()}
   @type schedule_options :: [schedule_option]
 
   @doc """
@@ -112,7 +116,7 @@ defmodule Rihanna do
   @spec schedule({module, atom, list()}, schedule_options) :: {:ok, Rihanna.Job.t()}
   def schedule(term = {mod, fun, args}, schedule_options)
       when is_atom(mod) and is_atom(fun) and is_list(args) do
-    Rihanna.Job.enqueue(term, due_at(schedule_options))
+    Rihanna.Job.enqueue(term, due_at: due_at(schedule_options))
   end
 
   @doc """
@@ -139,7 +143,7 @@ defmodule Rihanna do
   """
   @spec schedule(module, any, schedule_options) :: {:ok, Rihanna.Job.t()}
   def schedule(mod, arg, schedule_options) when is_atom(mod) do
-    Rihanna.Job.enqueue({mod, arg}, due_at(schedule_options))
+    Rihanna.Job.enqueue({mod, arg}, due_at: due_at(schedule_options))
   end
 
   @doc """

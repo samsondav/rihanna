@@ -8,9 +8,11 @@ defmodule Rihanna.Job do
 
   @callback perform(arg :: any) :: :ok | {:ok, result} | :error | {:error, reason}
   @callback after_error({:error, reason} | :error | Exception.t(), arg) :: any()
+
   @callback retry_at({:error, reason} | :error | Exception.t(), arg, pos_integer) ::
               {:ok, DateTime.t()} | :noop
-  @optional_callbacks after_error: 2, retry_at: 3
+  @callback priority() :: pos_integer()
+  @optional_callbacks after_error: 2, retry_at: 3, priority: 0
 
   @moduledoc """
   A behaviour for Rihanna jobs.
@@ -59,7 +61,7 @@ defmodule Rihanna.Job do
   def after_error(failure_reason, args) do
     notify_someone(__MODULE__, failure_reason, args)
   end
-  ```
+
 
   You can define a `retry_at/3` callback function. Returning `{:ok, due_at}`
   will schedule the job to run again at that time. Returning :noop (the default)
@@ -76,6 +78,14 @@ defmodule Rihanna.Job do
     warn("Job failed after 3 attempts")
     :noop
   end
+
+  You can define a `priority/0` function which will be called if no priority
+  is set when a job is enqueued. It should return a single integer.
+  If you don't define this callback it will default to the lowest priority, 20.
+
+  ```
+  def priority(), do: 2
+  ```
   """
 
   @fields [
@@ -101,21 +111,25 @@ defmodule Rihanna.Job do
                                           end)
                                           |> Enum.join(", ")
 
+  @default_priority 50
+
   @doc false
   def start(job) do
     GenServer.call(Rihanna.JobManager, job)
   end
 
-  @doc """
-  The priority of this job.
-
-  A higher value means a higher job priority. Has a default of 0.
-  """
-  def priority, do: 0
-
   @doc false
-  def enqueue(term, due_at \\ nil) do
+  def enqueue(term, opts \\ %{}) do
     serialized_term = :erlang.term_to_binary(term)
+
+    # Fetch job module if it is a Rihanna.Job
+    job_module =
+      case term do
+        {m, _args} -> m
+        _ -> nil
+      end
+
+    priority = opts[:priority] || priority(job_module)
 
     now = DateTime.utc_now()
 
@@ -126,7 +140,7 @@ defmodule Rihanna.Job do
           VALUES ($1, $2, $3, $4)
           RETURNING #{@sql_fields}
         """,
-        [serialized_term, now, due_at, priority()]
+        [serialized_term, now, opts[:due_at], priority]
       )
 
     case result do
@@ -282,7 +296,7 @@ defmodule Rihanna.Job do
           WHERE NOT (id = ANY($3))
           AND (due_at IS NULL OR due_at <= now())
           AND failed_at IS NULL
-          ORDER BY priority DESC, enqueued_at, j.id
+          ORDER BY priority, enqueued_at, j.id
           FOR UPDATE OF j SKIP LOCKED
           LIMIT 1
         ) AS t1
@@ -296,7 +310,7 @@ defmodule Rihanna.Job do
               AND (due_at IS NULL OR due_at <= now())
               AND failed_at IS NULL
               AND (j.enqueued_at, j.id) > (jobs.enqueued_at, jobs.id)
-              ORDER BY priority DESC, enqueued_at, j.id
+              ORDER BY priority, enqueued_at, j.id
               FOR UPDATE OF j SKIP LOCKED
               LIMIT 1
             ) AS j
@@ -402,6 +416,21 @@ defmodule Rihanna.Job do
         """,
         [classid(), job_id]
       )
+  end
+
+  @doc """
+  Checks if a job implements `priority` callback and runs it.
+
+  A lower value means a higher job priority. Has a default of 20.
+  """
+  def priority(nil), do: @default_priority
+
+  def priority(job_module) do
+    if :erlang.function_exported(job_module, :priority, 0) do
+      job_module.priority()
+    else
+      @default_priority
+    end
   end
 
   @doc """
