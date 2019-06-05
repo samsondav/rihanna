@@ -8,7 +8,9 @@ defmodule Rihanna.Job do
 
   @callback perform(arg :: any) :: :ok | {:ok, result} | :error | {:error, reason}
   @callback after_error({:error, reason} | :error | Exception.t(), arg) :: any()
-  @optional_callbacks after_error: 2
+  @callback retry_at({:error, reason} | :error | Exception.t(), arg, pos_integer) ::
+              {:ok, DateTime.t()} | :noop
+  @optional_callbacks after_error: 2, retry_at: 3
 
   @moduledoc """
   A behaviour for Rihanna jobs.
@@ -67,7 +69,8 @@ defmodule Rihanna.Job do
     :enqueued_at,
     :due_at,
     :failed_at,
-    :fail_reason
+    :fail_reason,
+    :rihanna_internal_meta
   ]
 
   defstruct @fields
@@ -134,7 +137,8 @@ defmodule Rihanna.Job do
         enqueued_at,
         due_at,
         failed_at,
-        fail_reason
+        fail_reason,
+        rihanna_internal_meta
       ]) do
     %__MODULE__{
       id: id,
@@ -142,7 +146,8 @@ defmodule Rihanna.Job do
       enqueued_at: enqueued_at,
       due_at: due_at,
       failed_at: failed_at,
-      fail_reason: fail_reason
+      fail_reason: fail_reason,
+      rihanna_internal_meta: rihanna_internal_meta
     }
   end
 
@@ -326,6 +331,31 @@ defmodule Rihanna.Job do
   end
 
   @doc """
+  Update attempts and set due_at datetime
+  """
+  def mark_retried(pg, job_id, due_at) when is_pid(pg) and is_integer(job_id) do
+    %{num_rows: num_rows} =
+      Postgrex.query!(
+        pg,
+        """
+          UPDATE "#{table()}"
+          SET
+            due_at = $1,
+            rihanna_internal_meta = jsonb_set(rihanna_internal_meta, '{attempts}', (
+              COALESCE(rihanna_internal_meta->>'attempts','0')::int + 1
+            )::text::jsonb)
+          WHERE
+            id = $2
+        """,
+        [due_at, job_id]
+      )
+
+    release_lock(pg, job_id)
+
+    {:ok, num_rows}
+  end
+
+  @doc """
   The name of the jobs table.
   """
   @spec table() :: String.t()
@@ -377,6 +407,17 @@ defmodule Rihanna.Job do
 
           :noop
       end
+    end
+  end
+
+  @doc """
+  Checks when a job should be retried at
+  """
+  def retry_at(job_module, reason, arg, attempts) do
+    if :erlang.function_exported(job_module, :retry_at, 3) do
+      job_module.retry_at(reason, arg, attempts || 0)
+    else
+      :noop
     end
   end
 

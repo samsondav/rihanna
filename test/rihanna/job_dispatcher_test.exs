@@ -11,7 +11,8 @@ defmodule Rihanna.JobDispatcherTest do
     BadBehaviourWithBadAfterErrorMock,
     ErrorBehaviourMock,
     ErrorBehaviourWithBadAfterErrorMock,
-    ErrorTupleBehaviourMock
+    ErrorTupleBehaviourMock,
+    MockRetriedJob
   }
 
   setup_all :create_jobs_table
@@ -208,6 +209,23 @@ defmodule Rihanna.JobDispatcherTest do
       wait_for_task_execution()
       %Rihanna.Job{fail_reason: reason} = get_job_by_id(pg, id)
       assert reason == "Job Failed\n{:error, %{message: \"failed for some reason\"}}"
+    end
+
+    test "retries job once, marks job as failed when returns {:error, reason}", %{pg: pg} do
+      ref = make_ref()
+      {:ok, %{id: id}} = Rihanna.Job.enqueue({MockRetriedJob, [self(), ref]})
+
+      # First failure
+      assert_receive {^ref, _}
+      wait_for_task_execution()
+
+      # Retry failure
+      assert_receive {^ref, _}
+      wait_for_task_execution()
+
+      job = get_job_by_id(pg, id)
+      assert job.fail_reason == "Job Failed\n{:error, \"Failed on retry\"}"
+      assert job.rihanna_internal_meta["attempts"] == 1
     end
 
     test "removes task from state when returns {:error, reason}", %{dispatcher: dispatcher} do

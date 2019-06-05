@@ -89,16 +89,22 @@ defmodule Rihanna.JobDispatcher do
     Rihanna.Job.mark_failed(pg, job.id, DateTime.utc_now(), Exception.format_exit(reason))
   end
 
-  defp job_failure(%{id: id, term: {job_module, arg}}, reason, pg) do
-    # NOTE: Do we need to demonitor here?
-    Rihanna.Job.mark_failed(
-      pg,
-      id,
-      DateTime.utc_now(),
-      "Job Failed\n#{inspect(reason, limit: :infinity)}"
-    )
+  defp job_failure(%{id: id, term: {job_module, arg}, rihanna_internal_meta: meta}, reason, pg) do
+    case Rihanna.Job.retry_at(job_module, reason, arg, meta["attempts"]) do
+      {:ok, due_at} ->
+        Rihanna.Job.mark_retried(pg, id, due_at)
 
-    Rihanna.Job.after_error(job_module, reason, arg)
+      :noop ->
+        # NOTE: Do we need to demonitor here?
+        Rihanna.Job.mark_failed(
+          pg,
+          id,
+          DateTime.utc_now(),
+          "Job Failed\n#{inspect(reason, limit: :infinity)}"
+        )
+
+        Rihanna.Job.after_error(job_module, reason, arg)
+    end
   end
 
   defp job_failure(job, reason, pg) do
