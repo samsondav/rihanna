@@ -1,5 +1,10 @@
 # Changelog
 
+## v1.3.2
+
+- Relaxed restriction on Postgrex options in supervisor, enabling clients to
+  use any Postgrex configuration they want.
+
 ## v1.3.1
 
 - Fix incorrect index name being used with custom table name.
