@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.3.4
+
+- Drop `pool` from Postgrex config as Rihanna requires a single dedicated
+  connection.
+
 ## v1.3.3
 
 - Relaxed restriction on Postgrex options in supervisor, enabling clients to
