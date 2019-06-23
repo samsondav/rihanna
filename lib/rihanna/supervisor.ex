@@ -42,7 +42,7 @@ defmodule Rihanna.Supervisor do
         """
 
       {db, config} ->
-        db = Keyword.delete(db, :pool)
+        db = Keyword.drop(db, [:pool, :pool_size])
         Supervisor.start_link(__MODULE__, Keyword.merge(config, [db: db]), opts)
     end
   end
