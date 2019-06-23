@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.3.5
+
+- Drop `pool_size` from Postgrex config in addition to `pool`.
+
 ## 1.3.4
 
 - Drop `pool` from Postgrex config as Rihanna requires a single dedicated
