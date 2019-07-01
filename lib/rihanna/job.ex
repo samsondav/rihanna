@@ -82,7 +82,8 @@ defmodule Rihanna.Job do
   You can define a `priority/0` function which will be called if no priority
   is set when a job is enqueued. It should return a single integer. A priority
   of 1 will be the highest priority, with larger numbers being run after.
-  If you don't define this callback it will default to the lowest priority, 50.
+  If you don't define this callback it will default to a priority of 50, in an
+  attempt to have it run at a lower priority.
 
   ```
   def priority(), do: 2
