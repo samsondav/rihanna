@@ -80,8 +80,9 @@ defmodule Rihanna.Job do
   end
 
   You can define a `priority/0` function which will be called if no priority
-  is set when a job is enqueued. It should return a single integer.
-  If you don't define this callback it will default to the lowest priority, 20.
+  is set when a job is enqueued. It should return a single integer. A priority
+  of 1 will be the highest priority, with larger numbers being run after.
+  If you don't define this callback it will default to the lowest priority, 50.
 
   ```
   def priority(), do: 2
@@ -421,7 +422,9 @@ defmodule Rihanna.Job do
   @doc """
   Checks if a job implements `priority` callback and runs it.
 
-  A lower value means a higher job priority. Has a default of 20.
+  A lower value means a higher job priority. Has a default of 50,
+  a very low priority, to prevent new jobs from running before
+  higher priority jobs, when no priority is set.
   """
   def priority(nil), do: @default_priority
 

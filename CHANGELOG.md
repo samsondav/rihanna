@@ -3,9 +3,6 @@
 ## v2.0.0
 
 - Breaking change: must add `priority` column, which requires downtime
-- Breaking change: calls to `Rihanna.Job.enqueue` which include `due_at` arg
-  should now be moved into `opts` with `:priority`.
-  E.g., `Rihanna.Job.enqueue({MyJob, args}, %{due_at: DateTime.utc_now(), priority: 3})`
 
 ## 1.3.5
 
