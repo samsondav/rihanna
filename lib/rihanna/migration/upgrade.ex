@@ -126,7 +126,7 @@ defmodule Rihanna.Migration.Upgrade do
       $$
       """,
       """
-      CREATE INDEX IF NOT EXISTS rihanna_jobs_enqueued_at_id ON rihanna_jobs (enqueued_at ASC, id ASC);
+      CREATE INDEX IF NOT EXISTS #{table_name}_enqueued_at_id ON #{table_name} (enqueued_at ASC, id ASC);
       """,
       """
       DO $$
@@ -141,8 +141,8 @@ defmodule Rihanna.Migration.Upgrade do
       """
       DO $$
           BEGIN
-              DROP INDEX IF EXISTS rihanna_jobs_enqueued_at_id;
-              CREATE INDEX IF NOT EXISTS rihanna_jobs_priority_enqueued_at_id ON rihanna_jobs (priority ASC, enqueued_at ASC, id ASC);
+              DROP INDEX IF EXISTS #{table_name}_enqueued_at_id;
+              CREATE INDEX IF NOT EXISTS #{table_name}_priority_enqueued_at_id ON #{table_name} (priority ASC, enqueued_at ASC, id ASC);
           END;
       $$
       """
