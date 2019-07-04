@@ -126,9 +126,6 @@ defmodule Rihanna.Migration.Upgrade do
       $$
       """,
       """
-      CREATE INDEX IF NOT EXISTS #{table_name}_enqueued_at_id ON #{table_name} (enqueued_at ASC, id ASC);
-      """,
-      """
       DO $$
           BEGIN
               ALTER TABLE #{table_name} ADD COLUMN priority integer NOT NULL DEFAULT 50;
