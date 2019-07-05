@@ -61,6 +61,21 @@ defmodule Rihanna.Job do
   end
   ```
 
+  You can define a `retry_at/3` callback function. Returning ``{:ok, due_at}``
+  will schedule the job to run again at that time. Returning :noop (the default)
+  proceeds with normal job failure behavior. The value of `attempts` counts up
+  from 0, to allow backing off `due_at` to be calculated.
+
+  ```
+  def retry_at(_failure_reason, _args, attempts) when attempts < 3 do
+    due_at = DateTime.add(DateTime.utc_now(), attempts * 5, :second)
+    {:ok, due_at()}
+  end
+
+  def retry_at(failure_reason, _args, _attempts) do
+    warn("Job failed with reason #{inspect(failure_reason)}")
+    :noop
+  end
   """
 
   @fields [

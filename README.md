@@ -179,6 +179,10 @@ end
 
 Install with `mix deps.get`.
 
+**Note:** `Postgrex` requires some JSON library. `Jason` is the default they suggest,
+but if you are using a different library, please configure `Postgrex` to use it.
+[Read more details in the Postgrex docs.](https://github.com/elixir-ecto/postgrex#json-support)
+
 #### Step 2 - migrate the database
 
 Add a migration to create your jobs table.
