@@ -41,20 +41,29 @@ ALTER TABLE rihanna_jobs ADD COLUMN priority integer;
 CREATE INDEX CONCURRENTLY rihanna_jobs_priority_enqueued_at_id ON rihanna_jobs (priority ASC, enqueued_at ASC, id ASC);
 ```
 
-2. Upgrade your code to use Rihanna v2 and release/deploy
-3. After the new code is running, set the default value on priority
+2. Upgrade your code to use Rihanna v2
+3. Create a migration with something like `mix ecto.gen.migration` and add `use Rihanna.Migration.Upgrade` (as in Option 1 above)
+4. Insert the migration version (the numbers at the start of the new filename) into `schema_migrations` table, looks something like this:
+
+```
+INSERT INTO schema_migrations VALUES (YOUR_MIGRATION_VERSION_HERE, now());
+```
+
+5. Deploy/release your code, the migration file should NOT run
+
+6. After the new code is running, set the default value on priority
 
 ```
 ALTER TABLE rihanna_jobs ALTER COLUMN priority SET DEFAULT 50;
 ```
 
-4. Backfill default value for any null priority jobs
+7. Backfill default value for any null priority jobs
 
 ```
 UPDATE rihanna_jobs SET priority = 50 WHERE priority IS NULL;
 ```
 
-5. Make the priority column NOT NULL
+8. Make the priority column NOT NULL
 
 ```
 ALTER TABLE rihanna_jobs ALTER COLUMN priority SET NOT NULL;
