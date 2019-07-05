@@ -72,8 +72,8 @@ defmodule Rihanna.Job do
     {:ok, due_at()}
   end
 
-  def retry_at(failure_reason, _args, _attempts) do
-    warn("Job failed with reason \#{inspect(failure_reason)}")
+  def retry_at(_failure_reason, _args, _attempts) do
+    warn("Job failed after 3 attempts")
     :noop
   end
   """
