@@ -136,11 +136,12 @@ defmodule Rihanna.Migration.Upgrade do
       $$
       """,
       """
-      CREATE INDEX CONCURRENTLY IF NOT EXISTS #{table_name}_priority_enqueued_at_id
-        ON #{table_name} (priority ASC, enqueued_at ASC, id ASC);
-      """,
-      """
-      DROP INDEX IF EXISTS #{table_name}_enqueued_at_id;
+      DO $$
+        BEGIN
+          DROP INDEX IF EXISTS #{table_name}_enqueued_at_id;
+          CREATE INDEX IF NOT EXISTS #{table_name}_priority_enqueued_at_id ON #{table_name} (priority ASC, enqueued_at ASC, id ASC);
+        END;
+      $$
       """
     ]
   end
