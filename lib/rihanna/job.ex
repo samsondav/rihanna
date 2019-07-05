@@ -73,7 +73,7 @@ defmodule Rihanna.Job do
   end
 
   def retry_at(failure_reason, _args, _attempts) do
-    warn("Job failed with reason #{inspect(failure_reason)}")
+    warn("Job failed with reason \#{inspect(failure_reason)}")
     :noop
   end
   """
