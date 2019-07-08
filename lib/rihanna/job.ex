@@ -430,7 +430,27 @@ defmodule Rihanna.Job do
   """
   def retry_at(job_module, reason, arg, attempts) do
     if :erlang.function_exported(job_module, :retry_at, 3) do
-      job_module.retry_at(reason, arg, attempts || 0)
+      try do
+        job_module.retry_at(reason, arg, attempts || 0)
+      rescue
+        exception ->
+          Logger.warn(
+            """
+            [Rihanna] retry_at/4 callback failed
+            Got an unexpected error while trying to run the `retry_at` callback.
+            Check your `#{inspect(job_module)}.retry_at/2` callback and make sure it doesn’t raise.
+            Exception: #{inspect(exception)}
+            Arg1: #{inspect(reason)}
+            Arg2: #{inspect(arg)}
+            """,
+            exception: exception,
+            job_arguments: arg,
+            job_failure_reason: reason,
+            job_module: job_module
+          )
+
+          :noop
+      end
     else
       :noop
     end

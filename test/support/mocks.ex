@@ -132,6 +132,19 @@ defmodule Rihanna.Mocks do
     end
   end
 
+  defmodule MockRaiseOnRetryJob do
+    @behaviour Rihanna.Job
+
+    def perform(_arg) do
+      {:error, "Raise on retry"}
+    end
+
+    # Raise on retry
+    def retry_at(_reason, _arg, 0) do
+      raise "Crash and burn, job_dispatcher!"
+    end
+  end
+
   defmodule ErrorBehaviourMockWithNoErrorCallback do
     @behaviour Rihanna.Job
 
