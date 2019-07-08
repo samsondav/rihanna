@@ -94,7 +94,7 @@ defmodule Rihanna.JobDispatcher do
       {:ok, due_at} ->
         Rihanna.Job.mark_retried(pg, id, due_at)
 
-      :noop ->
+      _ ->
         # NOTE: Do we need to demonitor here?
         Rihanna.Job.mark_failed(
           pg,

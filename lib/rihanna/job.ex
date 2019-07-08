@@ -69,7 +69,7 @@ defmodule Rihanna.Job do
   ```
   def retry_at(_failure_reason, _args, attempts) when attempts < 3 do
     due_at = DateTime.add(DateTime.utc_now(), attempts * 5, :second)
-    {:ok, due_at()}
+    {:ok, due_at}
   end
 
   def retry_at(_failure_reason, _args, _attempts) do
