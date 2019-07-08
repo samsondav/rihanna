@@ -61,7 +61,7 @@ defmodule Rihanna.Job do
   end
   ```
 
-  You can define a `retry_at/3` callback function. Returning ``{:ok, due_at}``
+  You can define a `retry_at/3` callback function. Returning `{:ok, due_at}`
   will schedule the job to run again at that time. Returning :noop (the default)
   proceeds with normal job failure behavior. The value of `attempts` counts up
   from 0, to allow backing off `due_at` to be calculated.
