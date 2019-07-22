@@ -47,6 +47,7 @@ defmodule Rihanna.MixProject do
       {:ecto, ">= 2.0.0", optional: true},
       {:ecto_sql, ">= 3.0.0", optional: true},
       # Development tools
+      {:jason, ">= 1.1.2", only: :test},
       {:benchee, ">= 0.13.0", only: :test},
       {:ex_doc, ">= 0.0.0", only: :dev, runtime: false},
       {:dialyxir, ">= 0.0.0", only: :dev, runtime: false},

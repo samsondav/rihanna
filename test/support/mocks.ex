@@ -113,6 +113,38 @@ defmodule Rihanna.Mocks do
     end
   end
 
+  defmodule MockRetriedJob do
+    @behaviour Rihanna.Job
+
+    def perform([pid, msg]) do
+      Process.send(pid, {msg, self()}, [])
+      {:error, "Failed on retry"}
+    end
+
+    # Retry once
+    def retry_at(_reason, _arg, 0) do
+      # Retry immediately
+      {:ok, DateTime.utc_now()}
+    end
+
+    def retry_at(_, _, _) do
+      :noop
+    end
+  end
+
+  defmodule MockRaiseOnRetryJob do
+    @behaviour Rihanna.Job
+
+    def perform(_arg) do
+      {:error, "Raise on retry"}
+    end
+
+    # Raise on retry
+    def retry_at(_reason, _arg, 0) do
+      raise "Crash and burn, job_dispatcher!"
+    end
+  end
+
   defmodule ErrorBehaviourMockWithNoErrorCallback do
     @behaviour Rihanna.Job
 

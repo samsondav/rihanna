@@ -6,6 +6,8 @@ defmodule Rihanna.JobTest do
 
   @class_id Rihanna.Config.pg_advisory_lock_class_id()
 
+  alias Rihanna.Mocks.{MockJob, MockRetriedJob}
+
   setup_all [:create_jobs_table]
 
   setup %{pg: pg} do
@@ -226,6 +228,34 @@ defmodule Rihanna.JobTest do
 
       assert updated_job.failed_at == now
       assert updated_job.fail_reason == "It went kaboom!"
+    end
+  end
+
+  describe "mark_retried/3" do
+    test "increments the rihanna_internal_meta attempts field and sets due_at", %{pg: pg} do
+      job = insert_job(pg, :ready_to_run)
+
+      %{rows: [[true]]} =
+        Postgrex.query!(pg, "SELECT pg_try_advisory_lock(#{@class_id}, $1)", [job.id])
+
+      due_at = DateTime.utc_now()
+
+      mark_retried(pg, job.id, due_at)
+
+      updated_job = get_job_by_id(pg, job.id)
+
+      assert updated_job.due_at == due_at
+      assert updated_job.rihanna_internal_meta["attempts"] == 1
+    end
+  end
+
+  describe "retry_at/4" do
+    test "returns :noop when job module does not define retry_at function" do
+      assert :noop == Rihanna.Job.retry_at(MockJob, nil, nil, nil)
+    end
+
+    test "returns {:ok, %DateTime{}} when job module defines retry_at" do
+      {:ok, %DateTime{}} = Rihanna.Job.retry_at(MockRetriedJob, "", [], 0)
     end
   end
 end

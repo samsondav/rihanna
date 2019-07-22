@@ -8,7 +8,9 @@ defmodule Rihanna.Job do
 
   @callback perform(arg :: any) :: :ok | {:ok, result} | :error | {:error, reason}
   @callback after_error({:error, reason} | :error | Exception.t(), arg) :: any()
-  @optional_callbacks after_error: 2
+  @callback retry_at({:error, reason} | :error | Exception.t(), arg, pos_integer) ::
+              {:ok, DateTime.t()} | :noop
+  @optional_callbacks after_error: 2, retry_at: 3
 
   @moduledoc """
   A behaviour for Rihanna jobs.
@@ -59,6 +61,21 @@ defmodule Rihanna.Job do
   end
   ```
 
+  You can define a `retry_at/3` callback function. Returning `{:ok, due_at}`
+  will schedule the job to run again at that time. Returning :noop (the default)
+  proceeds with normal job failure behavior. The value of `attempts` counts up
+  from 0, to allow backing off `due_at` to be calculated.
+
+  ```
+  def retry_at(_failure_reason, _args, attempts) when attempts < 3 do
+    due_at = DateTime.add(DateTime.utc_now(), attempts * 5, :second)
+    {:ok, due_at}
+  end
+
+  def retry_at(_failure_reason, _args, _attempts) do
+    warn("Job failed after 3 attempts")
+    :noop
+  end
   """
 
   @fields [
@@ -67,7 +84,8 @@ defmodule Rihanna.Job do
     :enqueued_at,
     :due_at,
     :failed_at,
-    :fail_reason
+    :fail_reason,
+    :rihanna_internal_meta
   ]
 
   defstruct @fields
@@ -134,7 +152,8 @@ defmodule Rihanna.Job do
         enqueued_at,
         due_at,
         failed_at,
-        fail_reason
+        fail_reason,
+        rihanna_internal_meta
       ]) do
     %__MODULE__{
       id: id,
@@ -142,7 +161,8 @@ defmodule Rihanna.Job do
       enqueued_at: enqueued_at,
       due_at: due_at,
       failed_at: failed_at,
-      fail_reason: fail_reason
+      fail_reason: fail_reason,
+      rihanna_internal_meta: rihanna_internal_meta
     }
   end
 
@@ -326,6 +346,31 @@ defmodule Rihanna.Job do
   end
 
   @doc """
+  Update attempts and set due_at datetime
+  """
+  def mark_retried(pg, job_id, due_at) when is_pid(pg) and is_integer(job_id) do
+    %{num_rows: num_rows} =
+      Postgrex.query!(
+        pg,
+        """
+          UPDATE "#{table()}"
+          SET
+            due_at = $1,
+            rihanna_internal_meta = jsonb_set(rihanna_internal_meta, '{attempts}', (
+              COALESCE(rihanna_internal_meta->>'attempts','0')::int + 1
+            )::text::jsonb)
+          WHERE
+            id = $2
+        """,
+        [due_at, job_id]
+      )
+
+    release_lock(pg, job_id)
+
+    {:ok, num_rows}
+  end
+
+  @doc """
   The name of the jobs table.
   """
   @spec table() :: String.t()
@@ -377,6 +422,37 @@ defmodule Rihanna.Job do
 
           :noop
       end
+    end
+  end
+
+  @doc """
+  Checks when a job should be retried at
+  """
+  def retry_at(job_module, reason, arg, attempts) do
+    if :erlang.function_exported(job_module, :retry_at, 3) do
+      try do
+        job_module.retry_at(reason, arg, attempts || 0)
+      rescue
+        exception ->
+          Logger.warn(
+            """
+            [Rihanna] retry_at/4 callback failed
+            Got an unexpected error while trying to run the `retry_at` callback.
+            Check your `#{inspect(job_module)}.retry_at/2` callback and make sure it doesn’t raise.
+            Exception: #{inspect(exception)}
+            Arg1: #{inspect(reason)}
+            Arg2: #{inspect(arg)}
+            """,
+            exception: exception,
+            job_arguments: arg,
+            job_failure_reason: reason,
+            job_module: job_module
+          )
+
+          :noop
+      end
+    else
+      :noop
     end
   end
 
