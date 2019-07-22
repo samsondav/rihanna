@@ -61,7 +61,7 @@ defmodule TestHelper do
       exec.(
         conn,
         """
-        SELECT id, term, enqueued_at, due_at, failed_at, fail_reason, priority, rihanna_internal_meta
+        SELECT id, term, enqueued_at, due_at, failed_at, fail_reason, rihanna_internal_meta, priority
         FROM "rihanna_jobs"
         WHERE id = $1
         """,
@@ -83,7 +83,7 @@ defmodule TestHelper do
         """
           INSERT INTO "rihanna_jobs" (term, enqueued_at)
           VALUES ($1, '2018-01-01')
-          RETURNING id, term, enqueued_at, due_at, failed_at, fail_reason, priority, rihanna_internal_meta
+          RETURNING id, term, enqueued_at, due_at, failed_at, fail_reason, rihanna_internal_meta, priority
         """,
         [:erlang.term_to_binary(@test_term)]
       )
@@ -100,7 +100,7 @@ defmodule TestHelper do
         """
           INSERT INTO "rihanna_jobs" (term, enqueued_at, priority)
           VALUES ($1, '2018-01-01', 1)
-          RETURNING id, term, enqueued_at, due_at, failed_at, fail_reason, priority, rihanna_internal_meta
+          RETURNING id, term, enqueued_at, due_at, failed_at, fail_reason, rihanna_internal_meta, priority
         """,
         [:erlang.term_to_binary(@test_term)]
       )
@@ -118,7 +118,7 @@ defmodule TestHelper do
         """
           INSERT INTO "rihanna_jobs" (term, enqueued_at, due_at)
           VALUES ($1, '2018-01-01', now() + interval '1 minute')
-          RETURNING id, term, enqueued_at, due_at, failed_at, fail_reason, priority, rihanna_internal_meta
+          RETURNING id, term, enqueued_at, due_at, failed_at, fail_reason, rihanna_internal_meta, priority
         """,
         [:erlang.term_to_binary(@test_term)]
       )
@@ -136,7 +136,7 @@ defmodule TestHelper do
         """
           INSERT INTO "rihanna_jobs" (term, enqueued_at, due_at)
           VALUES ($1, '2018-01-01', now())
-          RETURNING id, term, enqueued_at, due_at, failed_at, fail_reason, priority, rihanna_internal_meta
+          RETURNING id, term, enqueued_at, due_at, failed_at, fail_reason, rihanna_internal_meta, priority
         """,
         [:erlang.term_to_binary(@test_term)]
       )
@@ -158,7 +158,7 @@ defmodule TestHelper do
           fail_reason
         )
         VALUES ($1, '2018-01-01', '2018-01-02', 'Kaboom!')
-        RETURNING id, term, enqueued_at, due_at, failed_at, fail_reason, priority, rihanna_internal_meta
+        RETURNING id, term, enqueued_at, due_at, failed_at, fail_reason, rihanna_internal_meta, priority
         """,
         [:erlang.term_to_binary(@test_term)]
       )
