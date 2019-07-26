@@ -72,6 +72,17 @@ defmodule Rihanna.Migration.Upgrade do
       """,
       """
       ALTER TABLE #{table_name} DROP COLUMN rihanna_internal_meta;
+      """,
+      """
+      ALTER TABLE #{table_name} DROP COLUMN priority;
+      """,
+      """
+      DO $$
+          BEGIN
+              DROP INDEX IF EXISTS rihanna_jobs_priority_enqueued_at_id;
+              CREATE INDEX IF NOT EXISTS rihanna_jobs_enqueued_at_id ON rihanna_jobs (enqueued_at ASC, id ASC);
+          END;
+      $$
       """
     ]
   end
@@ -115,7 +126,22 @@ defmodule Rihanna.Migration.Upgrade do
       $$
       """,
       """
-      CREATE INDEX IF NOT EXISTS rihanna_jobs_enqueued_at_id ON rihanna_jobs (enqueued_at ASC, id ASC);
+      DO $$
+          BEGIN
+              ALTER TABLE #{table_name} ADD COLUMN priority integer NOT NULL DEFAULT 50;
+          EXCEPTION
+              WHEN duplicate_column THEN
+              RAISE NOTICE 'column already exists in #{table_name}.';
+          END;
+      $$
+      """,
+      """
+      DO $$
+        BEGIN
+          DROP INDEX IF EXISTS #{table_name}_enqueued_at_id;
+          CREATE INDEX IF NOT EXISTS #{table_name}_priority_enqueued_at_id ON #{table_name} (priority ASC, enqueued_at ASC, id ASC);
+        END;
+      $$
       """
     ]
   end

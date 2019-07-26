@@ -1,5 +1,10 @@
 # Changelog
 
+## v2.0.0
+
+- Breaking change: must add `priority` column, which requires downtime. Please
+  see [Upgrading v2](docs/upgrading_v2.md) for more detailed instructions.
+
 ## 1.3.5
 
 - Drop `pool_size` from Postgrex config in addition to `pool`.

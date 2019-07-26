@@ -104,6 +104,23 @@ defmodule Rihanna.JobTest do
       assert length(locked) == 3
     end
 
+    test "locks all available jobs, ordered with the highest priority first", %{pg: pg} do
+      insert_job(pg, :ready_to_run_highest_priority)
+      Rihanna.Job.enqueue({MockJob, :arg}, %{priority: 15})
+      # Default priority of 50
+      Rihanna.Job.enqueue({MockJob, :arg}, %{priority: nil})
+
+      [first_job | jobs] = lock(pg, 5)
+      assert %Rihanna.Job{priority: 1} = first_job
+
+      [next_job | jobs] = jobs
+      assert %Rihanna.Job{priority: 15} = next_job
+
+      # This could return any job in the table with a priority > 15
+      [last_job | _jobs] = jobs
+      assert %Rihanna.Job{priority: 50} = last_job
+    end
+
     test "locks all available jobs if equal to N", %{pg: pg, jobs: jobs} do
       locked = lock(pg, 3)
 
@@ -256,6 +273,16 @@ defmodule Rihanna.JobTest do
 
     test "returns {:ok, %DateTime{}} when job module defines retry_at" do
       {:ok, %DateTime{}} = Rihanna.Job.retry_at(MockRetriedJob, "", [], 0)
+    end
+  end
+
+  describe "`enqueue/3` with priority option" do
+    test "includes the priority", %{pg: pg} do
+      {:ok, job} = Rihanna.Job.enqueue({MockJob, :arg}, %{priority: 2})
+
+      job = get_job_by_id(pg, job.id)
+
+      assert job.priority == 2
     end
   end
 end

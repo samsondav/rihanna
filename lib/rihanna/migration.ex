@@ -104,6 +104,7 @@ defmodule Rihanna.Migration do
       CREATE TABLE #{table_name} (
         id int NOT NULL,
         term bytea NOT NULL,
+        priority integer NOT NULL DEFAULT 50,
         enqueued_at timestamp with time zone NOT NULL,
         due_at timestamp with time zone,
         failed_at timestamp with time zone,
@@ -135,7 +136,7 @@ defmodule Rihanna.Migration do
       ADD CONSTRAINT #{table_name}_pkey PRIMARY KEY (id);
       """,
       """
-      CREATE INDEX #{table_name}_enqueued_at_id ON #{table_name} (enqueued_at ASC, id ASC);
+      CREATE INDEX #{table_name}_priority_enqueued_at_id ON #{table_name} (priority ASC, enqueued_at ASC, id ASC);
       """
     ]
   end
@@ -212,7 +213,7 @@ defmodule Rihanna.Migration do
   @doc false
   # Check that the required upgrades have been added
   def check_upgrade_not_required!(pg) do
-    required_upgrade_columns = ["due_at", "rihanna_internal_meta"]
+    required_upgrade_columns = ["due_at", "rihanna_internal_meta", "priority"]
     table_name = Rihanna.Job.table()
 
     case Postgrex.query(
@@ -232,7 +233,7 @@ defmodule Rihanna.Migration do
         :ok
     end
 
-    required_indexes = ["#{table_name}_pkey", "#{table_name}_enqueued_at_id"]
+    required_indexes = ["#{table_name}_pkey", "#{table_name}_priority_enqueued_at_id"]
 
     case Postgrex.query(
            pg,

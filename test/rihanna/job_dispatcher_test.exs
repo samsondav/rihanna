@@ -462,7 +462,7 @@ defmodule Rihanna.JobDispatcherTest do
   describe "handle_info(:poll, state) with one historical scheduled job" do
     test "retrieves the job and puts it into the state", %{pg: pg} do
       past = DateTime.from_naive!(~N[2018-08-01 12:00:00], "Etc/UTC")
-      _job = Rihanna.Job.enqueue({MFAMock, :fun, [self(), "job-historical"]}, past)
+      _job = Rihanna.Job.enqueue({MFAMock, :fun, [self(), "job-historical"]}, %{due_at: past})
 
       JobDispatcher.handle_info(:poll, initial_state(pg))
 
@@ -480,8 +480,8 @@ defmodule Rihanna.JobDispatcherTest do
       now = DateTime.utc_now()
 
       _job = Rihanna.Job.enqueue({MFAMock, :fun, [self(), "job-enqueue"]})
-      _job = Rihanna.Job.enqueue({MFAMock, :fun, [self(), "job-schedule-1"]}, now)
-      _job = Rihanna.Job.enqueue({MFAMock, :fun, [self(), "job-schedule-2"]}, now)
+      _job = Rihanna.Job.enqueue({MFAMock, :fun, [self(), "job-schedule-1"]}, %{due_at: now})
+      _job = Rihanna.Job.enqueue({MFAMock, :fun, [self(), "job-schedule-2"]}, %{due_at: now})
 
       JobDispatcher.handle_info(:poll, initial_state(pg))
 
