@@ -223,6 +223,83 @@ defmodule Rihanna.Job do
   end
 
   @doc false
+  def delete_by(opts) do
+    ids_to_delete =
+      opts
+      |> filter_term_list()
+      |> Enum.join(",")
+
+    if ids_to_delete != "" do
+      case producer_query(
+             """
+                DELETE FROM "#{table()}"
+                WHERE id IN (#{ids_to_delete})
+             """,
+             []
+           ) do
+        {:ok, %Postgrex.Result{num_rows: 0}} ->
+          {:error, :job_not_found}
+
+        {:ok, _} ->
+          {:ok, :deleted}
+
+        error ->
+          error
+      end
+    else
+      {:error, :job_not_found}
+    end
+  end
+
+  defp filter_term_list(mod: mod, fun: fun) when not is_nil(mod) and not is_nil(fun) do
+    Enum.flat_map(retrieve_all_jobs(), fn [id, binary] ->
+      term = :erlang.binary_to_term(binary)
+
+      if match?({^mod, ^fun, _}, term) or match?({^mod, ^fun}, term) do
+        [id]
+      else
+        []
+      end
+    end)
+  end
+
+  defp filter_term_list(mod: mod) when not is_nil(mod) do
+    Enum.flat_map(retrieve_all_jobs(), fn [id, binary] ->
+      term = :erlang.binary_to_term(binary)
+
+      if match?({^mod, _, _}, term) or match?({^mod, _}, term) do
+        [id]
+      else
+        []
+      end
+    end)
+  end
+
+  defp filter_term_list(fun: fun) when not is_nil(fun) do
+    Enum.flat_map(retrieve_all_jobs(), fn [id, binary] ->
+      term = :erlang.binary_to_term(binary)
+
+      if match?({_, ^fun, _}, term) or match?({_, ^fun}, term) do
+        [id]
+      else
+        []
+      end
+    end)
+  end
+
+  defp retrieve_all_jobs do
+    {:ok, result} =
+      producer_query(
+        """
+          SELECT id, term
+          FROM "#{table()}"
+        """,
+        []
+      )
+
+    result.rows
+  end
+
   def delete(job_id) do
     result =
       producer_query(

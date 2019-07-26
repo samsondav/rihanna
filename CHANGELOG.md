@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Added `Rihanna.deleted_by/1`
+
 ## v2.0.0
 
 - Breaking change: must add `priority` column, which requires downtime. Please

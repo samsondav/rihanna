@@ -179,6 +179,35 @@ defmodule Rihanna do
     Rihanna.Job.delete(job_id)
   end
 
+  @doc """
+  Deletes all jobs that match either/or module or function.
+
+  ## Example
+
+  Deletes all jobs for `Module.function`
+
+    ```
+    Rihanna.delete_by(mod: Module, fun: :function)
+    ```
+
+  Deletes all jobs for the module `Module`
+
+    ```
+    Rihanna.delete_by(mod: Module)
+    ```
+
+  Deletes all jobs for the function `function`
+
+    ```
+    Rihanna.delete_by(fun: :function)
+    ```
+
+  """
+  @spec delete_by(list()) :: {:ok, :deleted} | {:error, :job_not_found}
+  def delete_by(opts) when is_list(opts) do
+    Rihanna.Job.delete_by(opts)
+  end
+
   defp due_at(at: %DateTime{} = due_at), do: due_at
 
   defp due_at(in: due_in) when is_integer(due_in) and due_in > 0 do
