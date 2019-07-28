@@ -11,6 +11,7 @@ defmodule Rihanna.MixProject do
       dialyzer: [ignore_warnings: "dialyzer.ignore-warnings"],
       package: package(),
       elixirc_paths: elixirc_paths(Mix.env()),
+      aliases: aliases(),
       docs: [
         main: "Rihanna",
         extras: ["README.md"]
@@ -63,5 +64,9 @@ defmodule Rihanna.MixProject do
       maintainers: ["sampdavies@gmail.com", "louis@lpil.uk"],
       links: %{"GitHub" => "https://github.com/samphilipd/rihanna"}
     ]
+  end
+
+  defp aliases() do
+    ["rihanna.setup": ["rihanna.create", "rihanna.migrate"]]
   end
 end
