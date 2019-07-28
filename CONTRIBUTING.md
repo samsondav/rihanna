@@ -16,7 +16,11 @@ To do this, add a local.exs config file with your changes to the config.
 
 You can use the config.exs file as a template for what might go in there.
 
-Next, you'll need a database for Rihanna to store its jobs in.
+Next, you need to setup the database. Run `mix rihanna.setup` (an alias for `mix do rihanna.create, rihanna.migrate`). This command will create the database defined in your config :rihanna, :postgrex, :database and run the necessary migrations (table to store its jobs, etc.).
+
+> Make sure there is a database "postgres" accessible if you want to run the rihanna.create and rihanna.drop tasks. It's needed when creating or deleting the Rihanna database.
+
+Alternatively, you can create the database manually:
 
 If you were using psql to interact with your database:
 
