@@ -185,11 +185,9 @@ but if you are using a different library, please configure `Postgrex` to use it.
 
 #### Step 2 - migrate the database
 
-Add a migration to create your jobs table.
+Make sure you dependencies are compiled with `mix deps.compile`.
 
-Rihanna stores jobs in a table in your database. The default table name is "rihanna_jobs".
-
-To create the table yourself take a look at the docs for [Rihanna.Migration](https://hexdocs.pm/rihanna/Rihanna.Migration.html#content).
+Run `mix rihanna.migrate` to create the table that Rihanna uses to store jobs ("rihanna_jobs" by default) and others necessary objects.
 
 #### Step 3 - boot the supervisor
 
