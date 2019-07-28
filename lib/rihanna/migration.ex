@@ -25,8 +25,7 @@ defmodule Rihanna.Migration do
 
   #### Without Ecto
 
-  Ecto is not required to run Rihanna. If you want to create the table yourself,
-  without Ecto, take a look at either `statements/0` or `sql/0`.
+  Ecto is not required to run Rihanna. Run `mix rihanna.migrate` to setup your database.
 
   """
 

@@ -23,8 +23,7 @@ defmodule Rihanna.Migration.Upgrade do
 
   #### Without Ecto
 
-  Ecto is not required to run Rihanna. If you want to upgrade the table yourself,
-  without Ecto, take a look at either `statements/0` or `sql/0`.
+  Ecto is not required to run Rihanna. Run `mix rihanna.upgrade` to upgrade your database.
 
   """
 
