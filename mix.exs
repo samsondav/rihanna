@@ -43,7 +43,7 @@ defmodule Rihanna.MixProject do
   defp deps do
     [
       {:postgrex, ">= 0.13.3"},
-      {:telemetry, "~> 0.4"},
+      {:telemetry, "~> 0.2"},
       # Optional Ecto integration
       {:ecto, ">= 2.0.0", optional: true},
       {:ecto_sql, ">= 3.0.0", optional: true},

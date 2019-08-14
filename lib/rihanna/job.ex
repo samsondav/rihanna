@@ -418,7 +418,7 @@ defmodule Rihanna.Job do
 
   @doc false
   def mark_successful(pg, job_id) when is_pid(pg) and is_integer(job_id) do
-    :telemetry.execute([:rihanna, :job, :success], 1, %{job_id: job_id})
+    :telemetry.execute([:rihanna, :job, :succeeded], 1, %{job_id: job_id})
 
     %{num_rows: num_rows} =
       Postgrex.query!(
