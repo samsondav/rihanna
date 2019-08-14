@@ -5,7 +5,7 @@ defmodule Rihanna.MixProject do
     [
       app: :rihanna,
       version: "1.3.5",
-      elixir: "~> 1.5",
+      elixir: "~> 1.6",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       dialyzer: [ignore_warnings: "dialyzer.ignore-warnings"],
