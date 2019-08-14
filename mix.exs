@@ -4,7 +4,7 @@ defmodule Rihanna.MixProject do
   def project do
     [
       app: :rihanna,
-      version: "1.3.5",
+      version: "2.0.0",
       elixir: "~> 1.6",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
