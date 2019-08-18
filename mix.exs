@@ -5,7 +5,7 @@ defmodule Rihanna.MixProject do
     [
       app: :rihanna,
       version: "2.0.0",
-      elixir: "~> 1.5",
+      elixir: "~> 1.6",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       dialyzer: [ignore_warnings: "dialyzer.ignore-warnings"],
@@ -43,6 +43,7 @@ defmodule Rihanna.MixProject do
   defp deps do
     [
       {:postgrex, ">= 0.13.3"},
+      {:telemetry, "~> 0.2"},
       # Optional Ecto integration
       {:ecto, ">= 2.0.0", optional: true},
       {:ecto_sql, ">= 3.0.0", optional: true},
