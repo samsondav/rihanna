@@ -147,7 +147,7 @@ defmodule Rihanna.Job do
 
     case result do
       {:ok, %Postgrex.Result{rows: [job]}} ->
-        :telemetry.execute([:rihanna, :job, :enqueued], %{count: 1}, %{job_id: job |> hd})
+        :telemetry.execute([:rihanna, :job, :enqueued], %{}, %{job_id: job |> hd, count: 1})
         {:ok, from_sql(job)}
 
       {:error, %Postgrex.Error{postgres: %{pg_code: "42P01"}}} ->
@@ -242,7 +242,7 @@ defmodule Rihanna.Job do
           {:error, :job_not_found}
 
         {:ok, %Postgrex.Result{num_rows: n}} ->
-          :telemetry.execute([:rihanna, :job, :deleted], %{count: n}, %{})
+          :telemetry.execute([:rihanna, :job, :deleted], %{}, %{count: n})
           {:ok, :deleted}
 
         error ->
@@ -316,7 +316,7 @@ defmodule Rihanna.Job do
 
     case result do
       {:ok, %Postgrex.Result{rows: [job]}} ->
-        :telemetry.execute([:rihanna, :job, :deleted], %{count: 1}, %{job_id: job_id})
+        :telemetry.execute([:rihanna, :job, :deleted], %{}, %{job_id: job_id, count: 1})
         {:ok, from_sql(job)}
 
       {:ok, %Postgrex.Result{num_rows: 0}} ->
@@ -412,7 +412,7 @@ defmodule Rihanna.Job do
       Postgrex.query!(pg, lock_jobs, [classid(), n, exclude_ids])
 
     if num_rows > 0 do
-      :telemetry.execute([:rihanna, :job, :locked], %{count: num_rows}, %{})
+      :telemetry.execute([:rihanna, :job, :locked], %{}, %{count: num_rows})
     end
 
     Rihanna.Job.from_sql(rows)
@@ -420,7 +420,7 @@ defmodule Rihanna.Job do
 
   @doc false
   def mark_successful(pg, job_id) when is_pid(pg) and is_integer(job_id) do
-    :telemetry.execute([:rihanna, :job, :succeeded], %{count: 1}, %{job_id: job_id})
+    :telemetry.execute([:rihanna, :job, :succeeded], %{}, %{job_id: job_id, count: 1})
 
     %{num_rows: num_rows} =
       Postgrex.query!(
@@ -439,7 +439,7 @@ defmodule Rihanna.Job do
 
   @doc false
   def mark_failed(pg, job_id, now, fail_reason) when is_pid(pg) and is_integer(job_id) do
-    :telemetry.execute([:rihanna, :job, :failed], %{count: 1}, %{job_id: job_id})
+    :telemetry.execute([:rihanna, :job, :failed], %{}, %{job_id: job_id, count: 1})
 
     %{num_rows: num_rows} =
       Postgrex.query!(
@@ -464,7 +464,7 @@ defmodule Rihanna.Job do
   Update attempts and set due_at datetime
   """
   def mark_retried(pg, job_id, due_at) when is_pid(pg) and is_integer(job_id) do
-    :telemetry.execute([:rihanna, :job, :retried], %{count: 1}, %{job_id: job_id})
+    :telemetry.execute([:rihanna, :job, :retried], %{}, %{job_id: job_id, count: 1})
 
     %{num_rows: num_rows} =
       Postgrex.query!(
@@ -501,7 +501,7 @@ defmodule Rihanna.Job do
   end
 
   defp release_lock(pg, job_id) when is_pid(pg) and is_integer(job_id) do
-    :telemetry.execute([:rihanna, :job, :released], %{count: 1}, %{job_id: job_id})
+    :telemetry.execute([:rihanna, :job, :released], %{}, %{job_id: job_id, count: 1})
 
     %{rows: [[true]]} =
       Postgrex.query!(
