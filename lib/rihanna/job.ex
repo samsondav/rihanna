@@ -411,7 +411,9 @@ defmodule Rihanna.Job do
     %{rows: rows, num_rows: num_rows} =
       Postgrex.query!(pg, lock_jobs, [classid(), n, exclude_ids])
 
-    :telemetry.execute([:rihanna, :job, :locked], %{count: num_rows}, %{})
+    if num_rows > 0 do
+      :telemetry.execute([:rihanna, :job, :locked], %{count: num_rows}, %{})
+    end
 
     Rihanna.Job.from_sql(rows)
   end
