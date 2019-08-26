@@ -36,6 +36,8 @@ defmodule Rihanna do
 
   """
 
+  @type connection :: {Ecto, repo :: module}
+
   @enqueue_help_message """
   Rihanna.Enqueue requires either one argument in the form {mod, fun, args} or
   two arguments of a module implementing Rihanna.Job and its arg.
@@ -49,6 +51,8 @@ defmodule Rihanna do
   > Rihanna.enqueue(MyJob, arg)
   """
 
+  def enqueue(term, opts \\ %{})
+
   @doc """
   Enqueues a job specified as a simple mod-fun-args tuple.
 
@@ -56,13 +60,10 @@ defmodule Rihanna do
 
       > Rihanna.enqueue({IO, :puts, ["Umbrella-ella-ella"]})
   """
-  @spec enqueue({module, atom, list()}) :: {:ok, Rihanna.Job.t()}
-  def enqueue(term = {mod, fun, args}) when is_atom(mod) and is_atom(fun) and is_list(args) do
-    Rihanna.Job.enqueue(term)
-  end
-
-  def enqueue(_) do
-    raise ArgumentError, @enqueue_help_message
+  @spec enqueue({module(), atom(), list()}, map()) :: {:ok, Rihanna.Job.t()}
+  def enqueue(term = {mod, fun, args}, opts)
+      when is_atom(mod) and is_atom(fun) and is_list(args) do
+    Rihanna.Job.enqueue(term, opts)
   end
 
   @doc """
@@ -82,7 +83,13 @@ defmodule Rihanna do
   Rihanna.enqueue(MyApp.MyJob, [arg1, arg2])
   ```
   """
-  @spec enqueue(module, any) :: {:ok, Rihanna.Job.t()}
+
+  @spec enqueue({module(), any()}, map()) :: {:ok, Rihanna.Job.t()}
+  def enqueue(term = {mod, _arg}, opts) when is_atom(mod) do
+    Rihanna.Job.enqueue(term, opts)
+  end
+
+  @spec enqueue(module(), any()) :: {:ok, Rihanna.Job.t()}
   def enqueue(mod, arg) when is_atom(mod) do
     Rihanna.Job.enqueue({mod, arg})
   end
@@ -113,10 +120,13 @@ defmodule Rihanna do
       Rihanna.schedule({IO, :puts, ["Umbrella-ella-ella"]}, in: :timer.minutes(5))
 
   """
-  @spec schedule({module, atom, list()}, schedule_options) :: {:ok, Rihanna.Job.t()}
-  def schedule(term = {mod, fun, args}, schedule_options)
+  def schedule(term, schedule_options, opts \\ %{})
+
+  @spec schedule({module, atom, list()}, schedule_options(), map()) :: {:ok, Rihanna.Job.t()}
+  def schedule(term = {mod, fun, args}, schedule_options, opts)
       when is_atom(mod) and is_atom(fun) and is_list(args) do
-    Rihanna.Job.enqueue(term, due_at: due_at(schedule_options))
+    opts = Map.put(opts, :due_at, due_at(schedule_options))
+    Rihanna.Job.enqueue(term, opts)
   end
 
   @doc """
@@ -141,7 +151,13 @@ defmodule Rihanna do
       Rihanna.schedule(MyApp.MyJob, [arg1, arg2], in: :timer.minutes(5))
 
   """
-  @spec schedule(module, any, schedule_options) :: {:ok, Rihanna.Job.t()}
+  @spec schedule({module(), any()}, schedule_options(), map()) :: {:ok, Rihanna.Job.t()}
+  def schedule(term = {mod, _arg}, schedule_options, opts) when is_atom(mod) do
+    opts = Map.put(opts, :due_at, due_at(schedule_options))
+    Rihanna.Job.enqueue(term, opts)
+  end
+
+  @spec schedule(module(), any(), schedule_options()) :: {:ok, Rihanna.Job.t()}
   def schedule(mod, arg, schedule_options) when is_atom(mod) do
     Rihanna.Job.enqueue({mod, arg}, due_at: due_at(schedule_options))
   end
@@ -152,31 +168,35 @@ defmodule Rihanna do
   Note that this only works if the job has failed - if it has not yet run or is
   currently in progress, this function will do nothing.
   """
-  @spec retry(String.t()) :: {:ok, :retried} | {:error, :job_not_found}
-  def retry(job_id) when is_binary(job_id) do
+  def retry(job_id, opts \\ %{})
+
+  @spec retry(String.t(), map()) :: {:ok, :retried} | {:error, :job_not_found}
+  def retry(job_id, opts) when is_binary(job_id) do
     job_id
     |> String.to_integer()
-    |> retry()
+    |> retry(opts)
   end
 
-  @spec retry(integer) :: {:ok, :retried} | {:error, :job_not_found}
-  def retry(job_id) when is_integer(job_id) and job_id > 0 do
-    Rihanna.Job.retry_failed(job_id)
+  @spec retry(integer(), map()) :: {:ok, :retried} | {:error, :job_not_found}
+  def retry(job_id, opts) when is_integer(job_id) and job_id > 0 do
+    Rihanna.Job.retry_failed(job_id, opts)
   end
 
   @doc """
   Deletes a job by ID. ID can be passed as either integer or string.
 
   """
-  @spec delete(String.t() | integer) :: {:ok, Rihanna.Job.t()} | {:error, :job_not_found}
-  def delete(job_id) when is_binary(job_id) do
+  def delete(job_id, opts \\ %{})
+
+  @spec delete(String.t() | integer(), map()) :: {:ok, Rihanna.Job.t()} | {:error, :job_not_found}
+  def delete(job_id, opts) when is_binary(job_id) do
     job_id
     |> String.to_integer()
-    |> delete()
+    |> delete(opts)
   end
 
-  def delete(job_id) when is_integer(job_id) and job_id > 0 do
-    Rihanna.Job.delete(job_id)
+  def delete(job_id, opts) when is_integer(job_id) and job_id > 0 do
+    Rihanna.Job.delete(job_id, opts)
   end
 
   @doc """

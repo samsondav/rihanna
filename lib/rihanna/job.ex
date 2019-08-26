@@ -136,11 +136,13 @@ defmodule Rihanna.Job do
       end
 
     priority = opts[:priority] || priority(job_module)
+    connection = opts[:producer_postgres_connection]
 
     now = DateTime.utc_now()
 
     result =
       producer_query(
+        connection,
         """
           INSERT INTO "#{table()}" (term, enqueued_at, due_at, priority)
           VALUES ($1, $2, $3, $4)
@@ -201,11 +203,13 @@ defmodule Rihanna.Job do
   def from_sql([]), do: []
 
   @doc false
-  def retry_failed(job_id) when is_integer(job_id) do
+  def retry_failed(job_id, opts \\ %{}) when is_integer(job_id) do
     now = DateTime.utc_now()
+    connection = opts[:producer_postgres_connection]
 
     {:ok, result} =
       producer_query(
+        connection,
         """
           UPDATE "#{table()}"
           SET
@@ -229,6 +233,8 @@ defmodule Rihanna.Job do
 
   @doc false
   def delete_by(opts) do
+    connection = opts[:producer_postgres_connection]
+
     ids_to_delete =
       opts
       |> filter_term_list()
@@ -236,6 +242,7 @@ defmodule Rihanna.Job do
 
     if ids_to_delete != "" do
       case producer_query(
+             connection,
              """
                 DELETE FROM "#{table()}"
                 WHERE id IN (#{ids_to_delete})
@@ -306,9 +313,12 @@ defmodule Rihanna.Job do
     result.rows
   end
 
-  def delete(job_id) do
+  def delete(job_id, opts \\ %{}) do
+    connection = opts[:producer_postgres_connection]
+
     result =
       producer_query(
+        connection,
         """
           DELETE FROM "#{table()}"
           WHERE
@@ -631,5 +641,9 @@ defmodule Rihanna.Job do
 
   defp producer_query({Postgrex, conn}, query, args) do
     Postgrex.query(conn, query, args)
+  end
+
+  defp producer_query(_connection, query, args) do
+    producer_query(query, args)
   end
 end
