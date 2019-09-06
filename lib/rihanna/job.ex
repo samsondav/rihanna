@@ -58,7 +58,7 @@ defmodule Rihanna.Job do
   without running anything.
 
   If you wish to re-enqueue a job to run at a different time, you can simply
-  return `{:ok, due_at}` where `due_at` is some DateTime timestamp.
+  return `{:reenqueue, due_at}` where `due_at` is some DateTime timestamp.
 
   ```
   def after_error(failure_reason, args) do

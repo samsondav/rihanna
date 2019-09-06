@@ -158,7 +158,7 @@ defmodule Rihanna.Mocks do
     @behaviour Rihanna.Job
 
     def perform(due_at) do
-      {:ok, due_at}
+      {:reenqueue, due_at}
     end
   end
 end
