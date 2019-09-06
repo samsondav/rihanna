@@ -13,7 +13,8 @@ defmodule Rihanna.JobDispatcherTest do
     ErrorBehaviourWithBadAfterErrorMock,
     ErrorTupleBehaviourMock,
     MockRetriedJob,
-    MockRaiseOnRetryJob
+    MockRaiseOnRetryJob,
+    MockReenqueuedJob
   }
 
   setup_all :create_jobs_table
@@ -193,6 +194,28 @@ defmodule Rihanna.JobDispatcherTest do
 
       refute Enum.any?(state.working)
       assert is_pid(state.pg)
+    end
+  end
+
+  describe "handle_info/2 with reenqueued job" do
+    setup do
+      {:ok, dispatcher} =
+        Rihanna.JobDispatcher.start_link([db: Application.fetch_env!(:rihanna, :postgrex)], [])
+
+      {:ok, %{dispatcher: dispatcher}}
+    end
+
+    test "sets due_at on the job", %{pg: pg} do
+      due_at = DateTime.add(DateTime.utc_now(), 3600, :second)
+
+      {:ok, %{id: id}} = Rihanna.Job.enqueue({MockReenqueuedJob, due_at})
+
+      wait_for_task_execution()
+
+      job = get_job_by_id(pg, id)
+
+      assert job.due_at == due_at
+      refute lock_held?(pg, id)
     end
   end
 

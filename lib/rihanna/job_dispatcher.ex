@@ -63,6 +63,9 @@ defmodule Rihanna.JobDispatcher do
       :error ->
         job_failure(job, result, pg)
 
+      {:ok, due_at} ->
+        Rihanna.Job.mark_reenqueued(pg, job.id, due_at)
+
       _ ->
         Rihanna.Job.mark_successful(pg, job.id)
     end

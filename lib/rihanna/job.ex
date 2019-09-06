@@ -57,6 +57,9 @@ defmodule Rihanna.Job do
   If you don't define this callback, it will add it to the failed job queue
   without running anything.
 
+  If you wish to re-enqueue a job to run at a different time, you can simply
+  return `{:ok, due_at}` where `due_at` is some DateTime timestamp.
+
   ```
   def after_error(failure_reason, args) do
     notify_someone(__MODULE__, failure_reason, args)
@@ -453,6 +456,27 @@ defmodule Rihanna.Job do
             id = $3
         """,
         [now, fail_reason, job_id]
+      )
+
+    release_lock(pg, job_id)
+
+    {:ok, num_rows}
+  end
+
+  def mark_reenqueued(pg, job_id, due_at) when is_pid(pg) and is_integer(job_id) do
+    :telemetry.execute([:rihanna, :job, :reenqueued], %{}, %{job_id: job_id, count: 1})
+
+    %{num_rows: num_rows} =
+      Postgrex.query!(
+        pg,
+        """
+          UPDATE "#{table()}"
+          SET
+            due_at = $1
+          WHERE
+            id = $2
+        """,
+        [due_at, job_id]
       )
 
     release_lock(pg, job_id)
