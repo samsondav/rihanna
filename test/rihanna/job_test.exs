@@ -273,13 +273,17 @@ defmodule Rihanna.JobTest do
       %{rows: [[true]]} =
         Postgrex.query!(pg, "SELECT pg_try_advisory_lock(#{@class_id}, $1)", [job.id])
 
-      due_at = DateTime.add(DateTime.utc_now(), 30, :second)
+      now =
+        DateTime.utc_now()
+        |> DateTime.to_unix()
+
+      due_at = DateTime.from_unix!(now + 30)
 
       mark_reenqueued(pg, job.id, due_at)
 
       updated_job = get_job_by_id(pg, job.id)
 
-      assert updated_job.due_at == due_at
+      assert updated_job.due_at |> DateTime.truncate(:second) == due_at
       assert updated_job.rihanna_internal_meta["attempts"] == 2
     end
   end

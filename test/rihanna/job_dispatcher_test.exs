@@ -206,7 +206,11 @@ defmodule Rihanna.JobDispatcherTest do
     end
 
     test "sets due_at on the job", %{pg: pg} do
-      due_at = DateTime.add(DateTime.utc_now(), 3600, :second)
+      now =
+        DateTime.utc_now()
+        |> DateTime.to_unix()
+
+      due_at = DateTime.from_unix!(now + 3600)
 
       {:ok, %{id: id}} = Rihanna.Job.enqueue({MockReenqueuedJob, due_at})
 
@@ -214,7 +218,7 @@ defmodule Rihanna.JobDispatcherTest do
 
       job = get_job_by_id(pg, id)
 
-      assert job.due_at == due_at
+      assert job.due_at |> DateTime.truncate(:second) == due_at
       refute lock_held?(pg, id)
     end
   end
