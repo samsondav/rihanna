@@ -184,4 +184,11 @@ defmodule TestHelper do
 
     job
   end
+
+  def due_in(due_in) do
+    DateTime.utc_now()
+    |> DateTime.to_unix(:millisecond)
+    |> Kernel.+(due_in)
+    |> DateTime.from_unix!(:millisecond)
+  end
 end
