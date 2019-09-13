@@ -266,6 +266,26 @@ defmodule Rihanna.JobTest do
     end
   end
 
+  describe "mark_reenqueued/3" do
+    test "retains the rihanna_internal_meta field and sets due_at", %{pg: pg} do
+      attempt_count = 2
+      job = insert_job(pg, :retried, attempt_count)
+
+      %{rows: [[true]]} =
+        Postgrex.query!(pg, "SELECT pg_try_advisory_lock(#{@class_id}, $1)", [job.id])
+
+      due_at = due_in(30_000)
+
+      mark_reenqueued(pg, job.id, due_at)
+
+      updated_job = get_job_by_id(pg, job.id)
+
+      assert is_nil(updated_job.failed_at)
+      assert updated_job.due_at |> DateTime.truncate(:millisecond) == due_at
+      assert updated_job.rihanna_internal_meta["attempts"] == attempt_count
+    end
+  end
+
   describe "retry_at/4" do
     test "returns :noop when job module does not define retry_at function" do
       assert :noop == Rihanna.Job.retry_at(MockJob, nil, nil, nil)

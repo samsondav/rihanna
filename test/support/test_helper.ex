@@ -167,4 +167,28 @@ defmodule TestHelper do
 
     job
   end
+
+  def insert_job(pg, :retried, count \\ 1) do
+    result =
+      Postgrex.query!(
+        pg,
+        """
+          INSERT INTO "rihanna_jobs" (term, enqueued_at, rihanna_internal_meta)
+          VALUES ($1, '2018-01-01', $2)
+          RETURNING id, term, enqueued_at, due_at, failed_at, fail_reason, rihanna_internal_meta, priority
+        """,
+        [:erlang.term_to_binary(@test_term), %{"attempts" => count}]
+      )
+
+    [job] = Rihanna.Job.from_sql(result.rows)
+
+    job
+  end
+
+  def due_in(due_in) do
+    DateTime.utc_now()
+    |> DateTime.to_unix(:millisecond)
+    |> Kernel.+(due_in)
+    |> DateTime.from_unix!(:millisecond)
+  end
 end

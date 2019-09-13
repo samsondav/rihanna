@@ -153,4 +153,12 @@ defmodule Rihanna.Mocks do
       :error
     end
   end
+
+  defmodule MockReenqueuedJob do
+    @behaviour Rihanna.Job
+
+    def perform(due_at) do
+      {:reenqueue, due_at}
+    end
+  end
 end
