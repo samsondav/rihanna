@@ -372,6 +372,7 @@ defmodule Rihanna.Job do
       when is_pid(pg) and is_integer(n) and n > 0 and is_list(exclude_ids) do
     table = table()
 
+    # `due_at` NULLS FIRST ensures `enqueued_at` is respected when `due_at` is unset
     lock_jobs = """
       WITH RECURSIVE jobs AS (
         SELECT #{@select_fields_for_recursive_lock_query}, pg_try_advisory_lock($1::integer, (j).id) AS locked
@@ -381,7 +382,7 @@ defmodule Rihanna.Job do
           WHERE NOT (id = ANY($3))
           AND (due_at IS NULL OR due_at <= now())
           AND failed_at IS NULL
-          ORDER BY priority, enqueued_at, j.id
+          ORDER BY priority, due_at NULLS FIRST, enqueued_at, j.id
           FOR UPDATE OF j SKIP LOCKED
           LIMIT 1
         ) AS t1
@@ -395,7 +396,7 @@ defmodule Rihanna.Job do
               AND (due_at IS NULL OR due_at <= now())
               AND failed_at IS NULL
               AND (j.enqueued_at, j.id) > (jobs.enqueued_at, jobs.id)
-              ORDER BY priority, enqueued_at, j.id
+              ORDER BY priority, due_at NULLS FIRST, enqueued_at, j.id
               FOR UPDATE OF j SKIP LOCKED
               LIMIT 1
             ) AS j

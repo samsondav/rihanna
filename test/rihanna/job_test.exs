@@ -85,6 +85,29 @@ defmodule Rihanna.JobTest do
     end
   end
 
+  describe "locking order with due_at" do
+    test "locks N jobs, ordered by due_at before enqueued_at, unless due_at is nil", %{pg: pg} do
+      due_at2 = due_in(-5_000)
+      # due_at earlier, enqueued_at after
+      due_at1 = due_in(-10_000)
+
+      Rihanna.Job.enqueue({MockJob, :arg}, %{due_at: due_at1})
+      Rihanna.Job.enqueue({MockJob, :arg}, %{due_at: due_at2})
+
+      jobs = lock(pg, 3)
+
+      # first_job is from setup
+      [first_job | jobs] = jobs
+      assert is_nil(first_job.due_at)
+
+      [second_job | jobs] = jobs
+      assert due_at1 == second_job.due_at |> DateTime.truncate(:millisecond)
+
+      [third_job | _jobs] = jobs
+      assert due_at2 == third_job.due_at |> DateTime.truncate(:millisecond)
+    end
+  end
+
   describe "lock/2" do
     setup %{pg: pg, job: job} do
       jobs =
