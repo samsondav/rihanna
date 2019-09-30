@@ -136,7 +136,7 @@ defmodule Rihanna.Migration do
       ADD CONSTRAINT #{table_name}_pkey PRIMARY KEY (id);
       """,
       """
-      CREATE INDEX #{table_name}_priority_enqueued_at_id ON #{table_name} (priority ASC, enqueued_at ASC, id ASC);
+      CREATE INDEX IF NOT EXISTS #{table_name}_locking_index ON #{table_name} (priority ASC, due_at ASC, enqueued_at ASC, id ASC);
       """
     ]
   end
@@ -233,7 +233,7 @@ defmodule Rihanna.Migration do
         :ok
     end
 
-    required_indexes = ["#{table_name}_pkey", "#{table_name}_priority_enqueued_at_id"]
+    required_indexes = ["#{table_name}_pkey", "#{table_name}_locking_index"]
 
     case Postgrex.query(
            pg,
