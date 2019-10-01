@@ -64,7 +64,7 @@ defmodule Rihanna.Job do
   def after_error(failure_reason, args) do
     notify_someone(__MODULE__, failure_reason, args)
   end
-
+  ```
 
   You can define a `retry_at/3` callback function. Returning `{:ok, due_at}`
   will schedule the job to run again at that time. Returning :noop (the default)
@@ -81,6 +81,7 @@ defmodule Rihanna.Job do
     warn("Job failed after 3 attempts")
     :noop
   end
+  ```
 
   You can define a `priority/0` function which will be called if no priority
   is set when a job is enqueued. It should return a single integer. A priority
