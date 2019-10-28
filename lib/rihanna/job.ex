@@ -136,19 +136,18 @@ defmodule Rihanna.Job do
       end
 
     priority = opts[:priority] || priority(job_module)
-    connection = opts[:producer_postgres_connection]
 
     now = DateTime.utc_now()
 
     result =
       producer_query(
-        connection,
         """
           INSERT INTO "#{table()}" (term, enqueued_at, due_at, priority)
           VALUES ($1, $2, $3, $4)
           RETURNING #{@sql_fields}
         """,
-        [serialized_term, now, opts[:due_at], priority]
+        [serialized_term, now, opts[:due_at], priority],
+        opts
       )
 
     case result do
@@ -205,11 +204,9 @@ defmodule Rihanna.Job do
   @doc false
   def retry_failed(job_id, opts \\ %{}) when is_integer(job_id) do
     now = DateTime.utc_now()
-    connection = opts[:producer_postgres_connection]
 
     {:ok, result} =
       producer_query(
-        connection,
         """
           UPDATE "#{table()}"
           SET
@@ -219,7 +216,8 @@ defmodule Rihanna.Job do
           WHERE
             failed_at IS NOT NULL AND id = $2
         """,
-        [now, job_id]
+        [now, job_id],
+        opts
       )
 
     case result.num_rows do
@@ -232,22 +230,20 @@ defmodule Rihanna.Job do
   end
 
   @doc false
-  def delete_by(opts) do
-    connection = opts[:producer_postgres_connection]
-
+  def delete_by(args, opts) do
     ids_to_delete =
-      opts
-      |> filter_term_list()
+      args
+      |> filter_term_list(opts)
       |> Enum.join(",")
 
     if ids_to_delete != "" do
       case producer_query(
-             connection,
              """
                 DELETE FROM "#{table()}"
                 WHERE id IN (#{ids_to_delete})
              """,
-             []
+             [],
+             opts
            ) do
         {:ok, %Postgrex.Result{num_rows: 0}} ->
           {:error, :job_not_found}
@@ -264,8 +260,8 @@ defmodule Rihanna.Job do
     end
   end
 
-  defp filter_term_list(mod: mod, fun: fun) when not is_nil(mod) and not is_nil(fun) do
-    Enum.flat_map(retrieve_all_jobs(), fn [id, binary] ->
+  defp filter_term_list([mod: mod, fun: fun], opts) when not is_nil(mod) and not is_nil(fun) do
+    Enum.flat_map(retrieve_all_jobs(opts), fn [id, binary] ->
       term = :erlang.binary_to_term(binary)
 
       if match?({^mod, ^fun, _}, term) or match?({^mod, ^fun}, term) do
@@ -276,8 +272,8 @@ defmodule Rihanna.Job do
     end)
   end
 
-  defp filter_term_list(mod: mod) when not is_nil(mod) do
-    Enum.flat_map(retrieve_all_jobs(), fn [id, binary] ->
+  defp filter_term_list([mod: mod], opts) when not is_nil(mod) do
+    Enum.flat_map(retrieve_all_jobs(opts), fn [id, binary] ->
       term = :erlang.binary_to_term(binary)
 
       if match?({^mod, _, _}, term) or match?({^mod, _}, term) do
@@ -288,8 +284,8 @@ defmodule Rihanna.Job do
     end)
   end
 
-  defp filter_term_list(fun: fun) when not is_nil(fun) do
-    Enum.flat_map(retrieve_all_jobs(), fn [id, binary] ->
+  defp filter_term_list([fun: fun], opts) when not is_nil(fun) do
+    Enum.flat_map(retrieve_all_jobs(opts), fn [id, binary] ->
       term = :erlang.binary_to_term(binary)
 
       if match?({_, ^fun, _}, term) or match?({_, ^fun}, term) do
@@ -300,32 +296,31 @@ defmodule Rihanna.Job do
     end)
   end
 
-  defp retrieve_all_jobs do
+  defp retrieve_all_jobs(opts) do
     {:ok, result} =
       producer_query(
         """
           SELECT id, term
           FROM "#{table()}"
         """,
-        []
+        [],
+        opts
       )
 
     result.rows
   end
 
   def delete(job_id, opts \\ %{}) do
-    connection = opts[:producer_postgres_connection]
-
     result =
       producer_query(
-        connection,
         """
           DELETE FROM "#{table()}"
           WHERE
             id = $1
           RETURNING #{@sql_fields}
         """,
-        [job_id]
+        [job_id],
+        opts
       )
 
     case result do
@@ -629,21 +624,24 @@ defmodule Rihanna.Job do
   end
 
   # Some operations can use the shared database connection as they don't use locks
-  defp producer_query(query, args) do
-    producer_query(Rihanna.Config.producer_postgres_connection(), query, args)
+  defp producer_query(query, args, opts) do
+    opts
+    |> adapter()
+    |> producer_do_query(query, args)
   end
 
   if Code.ensure_compiled?(Ecto) do
-    defp producer_query({Ecto, repo}, query, args) do
+    defp producer_do_query({Ecto, repo}, query, args) do
       Ecto.Adapters.SQL.query(repo, query, args)
     end
   end
 
-  defp producer_query({Postgrex, conn}, query, args) do
+  defp producer_do_query({Postgrex, conn}, query, args) do
     Postgrex.query(conn, query, args)
   end
 
-  defp producer_query(_connection, query, args) do
-    producer_query(query, args)
+  defp adapter(opts) do
+    opts[:producer_postgres_connection] ||
+      Rihanna.Config.producer_postgres_connection()
   end
 end

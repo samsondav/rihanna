@@ -223,9 +223,9 @@ defmodule Rihanna do
     ```
 
   """
-  @spec delete_by(list()) :: {:ok, :deleted} | {:error, :job_not_found}
-  def delete_by(opts) when is_list(opts) do
-    Rihanna.Job.delete_by(opts)
+  @spec delete_by(list(), map()) :: {:ok, :deleted} | {:error, :job_not_found}
+  def delete_by(args, opts \\ %{}) when is_list(args) do
+    Rihanna.Job.delete_by(args, opts)
   end
 
   defp due_at(at: %DateTime{} = due_at), do: due_at
