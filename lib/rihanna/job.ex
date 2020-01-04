@@ -125,7 +125,7 @@ defmodule Rihanna.Job do
   end
 
   @doc false
-  def enqueue(term, opts \\ %{}) do
+  def enqueue(term, opts \\ []) do
     serialized_term = :erlang.term_to_binary(term)
 
     # Fetch job module if it is a Rihanna.Job
@@ -202,7 +202,7 @@ defmodule Rihanna.Job do
   def from_sql([]), do: []
 
   @doc false
-  def retry_failed(job_id, opts \\ %{}) when is_integer(job_id) do
+  def retry_failed(job_id, opts \\ []) when is_integer(job_id) do
     now = DateTime.utc_now()
 
     {:ok, result} =
@@ -310,7 +310,7 @@ defmodule Rihanna.Job do
     result.rows
   end
 
-  def delete(job_id, opts \\ %{}) do
+  def delete(job_id, opts \\ []) do
     result =
       producer_query(
         """

@@ -139,7 +139,7 @@ defmodule RihannaTest do
     test "`enqueue/2`, `get_job_by_id/1`, `delete/1` using Ecto Repo passed in the options", %{
       pg: pg
     } do
-      opts = %{producer_postgres_connection: {Ecto, TestApp.Repo}}
+      opts = [producer_postgres_connection: {Ecto, TestApp.Repo}]
 
       TestApp.Repo.transaction(fn ->
         {:ok, job} = Rihanna.enqueue({MockJob, :arg}, opts)
