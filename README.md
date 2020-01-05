@@ -65,7 +65,7 @@ Now you can enqueue your jobs like so:
 
 ```elixir
 # Enqueue job for later execution and return immediately
-Rihanna.enqueue(MyApp.MyJob, [arg1, arg2])
+Rihanna.enqueue({MyApp.MyJob, [arg1, arg2]}, opts)
 ```
 
 ### Job scheduling
@@ -162,7 +162,6 @@ children = [
 ]
 ```
 
-
 ### Without Ecto
 
 #### Step 1 - add the dependency
@@ -231,7 +230,7 @@ Please refer to the [Changelog](CHANGELOG.md) for details on when a database upg
 
 **Q: What does the supervision tree look like/how does Rihanna work?**
 
-![Architecture/Supervision tree](docs/architecture.png?raw=true "Rihanna supervision tree")
+![Architecture/Supervision tree](docs/architecture.png?raw=true 'Rihanna supervision tree')
 
 **Q: How many jobs can be processed concurrently?**
 

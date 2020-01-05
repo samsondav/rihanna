@@ -66,6 +66,28 @@ defmodule Rihanna do
     Rihanna.Job.enqueue(term, opts)
   end
 
+
+  @doc """
+  Enqueues a job specified as a module and one argument.
+
+  It is expected that the module implements the `Rihanna.Job` behaviour and
+  defines a function `c:Rihanna.Job.perform/1`.
+
+  The argument may be anything.
+
+  See `Rihanna.Job` for more on how to implement your own jobs.
+
+  You can enqueue a job like so:
+
+  ```
+  # Enqueue job for later execution and return immediately
+  Rihanna.enqueue({MyApp.MyJob, [arg1, arg2]}, opts)
+  ```
+  """
+  @spec enqueue({module(), any()}, keyword()) :: {:ok, Rihanna.Job.t()}
+  def enqueue(term = {mod, _arg}, opts) when is_atom(mod) do
+    Rihanna.Job.enqueue(term, opts)
+  end
   @doc """
   Enqueues a job specified as a module and one argument.
 
@@ -83,11 +105,6 @@ defmodule Rihanna do
   Rihanna.enqueue(MyApp.MyJob, [arg1, arg2])
   ```
   """
-
-  @spec enqueue({module(), any()}, keyword()) :: {:ok, Rihanna.Job.t()}
-  def enqueue(term = {mod, _arg}, opts) when is_atom(mod) do
-    Rihanna.Job.enqueue(term, opts)
-  end
 
   @spec enqueue(module(), any()) :: {:ok, Rihanna.Job.t()}
   def enqueue(mod, arg) when is_atom(mod) do
