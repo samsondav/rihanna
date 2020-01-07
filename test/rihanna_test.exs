@@ -140,6 +140,7 @@ defmodule RihannaTest do
       pg: pg
     } do
       opts = [producer_postgres_connection: {Ecto, TestApp.Repo}]
+      refute Rihanna.Config.producer_postgres_connection() == {Ecto, TestApp.Repo}
 
       TestApp.Repo.transaction(fn ->
         {:ok, job} = Rihanna.enqueue({MockJob, :arg}, opts)
