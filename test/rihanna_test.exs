@@ -136,6 +136,34 @@ defmodule RihannaTest do
       end
     end
 
+    test "`enqueue/2`, `get_job_by_id/1`, `delete/1` using Ecto Repo passed in the options", %{
+      pg: pg
+    } do
+      opts = [producer_postgres_connection: {Ecto, TestApp.Repo}]
+      refute Rihanna.Config.producer_postgres_connection() == {Ecto, TestApp.Repo}
+
+      TestApp.Repo.transaction(fn ->
+        {:ok, job} = Rihanna.enqueue({MockJob, :arg}, opts)
+
+        # Repo conn is being used
+        assert job = get_job_by_id(TestApp.Repo, job.id)
+        refute get_job_by_id(pg, job.id)
+
+        assert %Rihanna.Job{} = job
+        assert %DateTime{} = job.enqueued_at
+        assert job.due_at |> is_nil
+        assert job.fail_reason |> is_nil
+        assert job.failed_at |> is_nil
+        assert job.priority == 50
+        assert job.term == {Rihanna.Mocks.MockJob, :arg}
+
+        assert {:ok, _} = Rihanna.delete(job.id, opts)
+
+        refute get_job_by_id(TestApp.Repo, job.id)
+        refute get_job_by_id(pg, job.id)
+      end)
+    end
+
     test "`enqueue/2`, `get_job_by_id/1`, `delete/1` using a Postgrex conn", %{pg: pg} do
       TemporaryEnv.put :rihanna, :producer_postgres_connection, {Postgrex, pg} do
         assert Rihanna.Config.producer_postgres_connection() == {Postgrex, pg}
