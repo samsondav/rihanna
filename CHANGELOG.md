@@ -1,6 +1,10 @@
 # Changelog
 
-## Unreleased
+## v2.1.1
+
+- Allow users to pass a different repo as parameter
+
+## v2.1.0
 
 - Added `Rihanna.deleted_by/1`
 
