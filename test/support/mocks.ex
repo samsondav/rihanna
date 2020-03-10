@@ -103,6 +103,11 @@ defmodule Rihanna.Mocks do
     def after_error(_reason, [pid, _]) do
       Process.send(pid, "After error callback", [])
     end
+
+    def retry_at(_reason, [pid, _], _attempts) do
+      Process.send(pid, "After retry callback", [])
+      :noop
+    end
   end
 
   defmodule MockJob do

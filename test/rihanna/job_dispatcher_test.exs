@@ -372,6 +372,12 @@ defmodule Rihanna.JobDispatcherTest do
       wait_for_task_execution()
       assert_received "After error callback"
     end
+
+    test "runs the retry_at callback on a job queued using the behaviour when it raises an error" do
+      {:ok, %{id: _}} = Rihanna.Job.enqueue({BadMFAMock, [self(), :ok]})
+      wait_for_task_execution()
+      assert_received "After retry callback"
+    end
   end
 
   describe "handle_info/2 with job that fails and its after_error raises" do

@@ -77,19 +77,8 @@ defmodule Rihanna.JobDispatcher do
 
   def handle_info({:DOWN, ref, :process, _pid, reason}, state = %{pg: pg, working: working}) do
     {job, working} = Map.pop(working, ref)
-    job_raised(job, reason, pg)
+    job_failure(job, reason, pg)
     {:noreply, Map.put(state, :working, working)}
-  end
-
-  defp job_raised(%{id: id, term: {job_module, arg}}, reason, pg) do
-    # NOTE: Do we need to demonitor here?
-    Rihanna.Job.mark_failed(pg, id, DateTime.utc_now(), Exception.format_exit(reason))
-    Rihanna.Job.after_error(job_module, reason, arg)
-  end
-
-  defp job_raised(job, reason, pg) do
-    # NOTE: Do we need to demonitor here?
-    Rihanna.Job.mark_failed(pg, job.id, DateTime.utc_now(), Exception.format_exit(reason))
   end
 
   defp job_failure(%{id: id, term: {job_module, arg}, rihanna_internal_meta: meta}, reason, pg) do
@@ -98,21 +87,26 @@ defmodule Rihanna.JobDispatcher do
         Rihanna.Job.mark_retried(pg, id, due_at)
 
       _ ->
-        # NOTE: Do we need to demonitor here?
-        Rihanna.Job.mark_failed(
-          pg,
-          id,
-          DateTime.utc_now(),
-          "Job Failed\n#{inspect(reason, limit: :infinity)}"
-        )
-
+        mark_failed(id, reason, pg)
         Rihanna.Job.after_error(job_module, reason, arg)
     end
   end
 
-  defp job_failure(job, reason, pg) do
+  defp job_failure(%{id: id}, reason, pg) do
+    mark_failed(id, reason, pg)
+  end
+
+  defp mark_failed(id, reason, pg) do
     # NOTE: Do we need to demonitor here?
-    Rihanna.Job.mark_failed(pg, job.id, DateTime.utc_now(), Exception.format_exit(reason))
+    Rihanna.Job.mark_failed(pg, id, DateTime.utc_now(), format_failure_reason(reason))
+  end
+
+  defp format_failure_reason({_, [_|_]} = reason) do
+    Exception.format_exit(reason)
+  end
+
+  defp format_failure_reason(reason) do
+    "Job Failed\n#{inspect(reason, limit: :infinity)}"
   end
 
   defp check_database!(pg) do
