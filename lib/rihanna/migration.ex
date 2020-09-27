@@ -136,7 +136,7 @@ defmodule Rihanna.Migration do
       ADD CONSTRAINT #{table_name}_pkey PRIMARY KEY (id);
       """,
       """
-      CREATE INDEX IF NOT EXISTS #{table_name}_locking_index ON #{table_name} (priority ASC, due_at ASC, enqueued_at ASC, id ASC);
+      CREATE INDEX IF NOT EXISTS #{table_name}_locking_index ON #{table_name} (priority ASC, due_at ASC NULLS FIRST, enqueued_at ASC, id ASC);
       """
     ]
   end
@@ -261,6 +261,32 @@ defmodule Rihanna.Migration do
 
       {:ok, %{rows: rows}} when length(rows) == length(required_indexes) ->
         :ok
+    end
+
+    nulls_first = ~r/due_at NULLS FIRST/
+
+    # check to ensure the locking index orders due_at with NULLS FIRST
+    # if it does not, then an upgrade needs to be performed as the
+    # performance will be impacted
+    case Postgrex.query(
+           pg,
+           """
+           SELECT indexdef
+           FROM pg_indexes
+           WHERE tablename = $1
+           AND indexname = $2
+           """,
+           [table_name, "#{table_name}_locking_index"]
+         ) do
+      {:ok, %{rows: []}} ->
+        raise_upgrade_required!()
+
+      {:ok, %{rows: [[index]]}} ->
+        if Regex.match?(nulls_first, index) do
+          :ok
+        else
+          raise_upgrade_required!()
+        end
     end
   end
 

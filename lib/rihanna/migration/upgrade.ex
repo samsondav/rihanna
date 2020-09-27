@@ -81,7 +81,7 @@ defmodule Rihanna.Migration.Upgrade do
           BEGIN
               DROP INDEX IF EXISTS rihanna_jobs_priority_enqueued_at_id;
               DROP INDEX IF EXISTS #{table_name}_locking_index;
-              CREATE INDEX IF NOT EXISTS #{table_name}_locking_index ON #{table_name} (priority ASC, due_at ASC, enqueued_at ASC, id ASC);
+              CREATE INDEX IF NOT EXISTS #{table_name}_locking_index ON #{table_name} (enqueued_at ASC, id ASC);
           END;
       $$
       """
@@ -142,7 +142,7 @@ defmodule Rihanna.Migration.Upgrade do
           DROP INDEX IF EXISTS #{table_name}_enqueued_at_id;
           DROP INDEX IF EXISTS #{table_name}_priority_enqueued_at_id;
           DROP INDEX IF EXISTS #{table_name}_locking_index;
-          CREATE INDEX IF NOT EXISTS #{table_name}_locking_index ON #{table_name} (priority ASC, due_at ASC, enqueued_at ASC, id ASC);
+          CREATE INDEX IF NOT EXISTS #{table_name}_locking_index ON #{table_name} (priority ASC, due_at ASC NULLS FIRST, enqueued_at ASC, id ASC);
         END;
       $$
       """

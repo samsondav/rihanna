@@ -38,7 +38,7 @@ This options should only be attempted if you feel VERY comfortable with SQL
 
 ```
 ALTER TABLE rihanna_jobs ADD COLUMN priority integer;
-CREATE INDEX CONCURRENTLY rihanna_jobs_locking_index ON rihanna_jobs (priority ASC, due_at ASC, enqueued_at ASC, id ASC);
+CREATE INDEX CONCURRENTLY rihanna_jobs_locking_index ON rihanna_jobs (priority ASC, due_at ASC NULLS FIRST, enqueued_at ASC, id ASC);
 ```
 
 2. Upgrade your code to use Rihanna v2

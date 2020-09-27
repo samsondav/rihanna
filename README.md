@@ -226,6 +226,15 @@ wish to tweak it, take a look at the documentation for [Rihanna.Config](https://
 
 Please refer to the [Changelog](CHANGELOG.md) for details on when a database upgrade is required and how to migrate the Rihanna jobs table.
 
+If you're on Rihanna v2, please check your `rihanna_jobs_locking_index` and check `due_at`. If it does not have `NULLS FIRST`, you'll want to
+recreate this index:
+
+```sql
+CREATE INDEX CONCURRENTLY rihanna_jobs_locking_index_fixed ON rihanna_jobs (priority ASC, due_at ASC NULLS FIRST, enqueued_at ASC, id ASC);
+DROP INDEX rihanna_jobs_locking_index;
+ALTER INDEX rihanna_jobs_locking_index_fixed RENAME TO rihanna_jobs_locking_index;
+```
+
 ## FAQs
 
 **Q: What does the supervision tree look like/how does Rihanna work?**
