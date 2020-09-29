@@ -1,5 +1,10 @@
 # Changelog
 
+## v2.2.0
+
+- DB Upgrade required: Recreate index to add NULLS FIRST on the due_at column on
+  jobs table to fix performance of the locking query
+
 ## v2.1.1
 
 - Allow users to pass a different repo as parameter
