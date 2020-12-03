@@ -6,6 +6,12 @@ defmodule Rihanna.UpgradeTest do
     :create_initial_database_schema
   ]
 
+  setup do
+    on_exit(fn ->
+      drop_alternate_database_schema()
+    end)
+  end
+
   @term {IO, :puts, ["Work, work, work, work, work."]}
 
   describe "with an outdated database schema" do
@@ -45,6 +51,29 @@ defmodule Rihanna.UpgradeTest do
     end
   end
 
+  describe "compatibility with multiple schemas" do
+    setup [
+      :upgrade_database_schema,
+      :create_alternate_database_schema
+    ]
+
+    test "check_table! raises when jobs table does not exist in alternate schema", %{pg: pg} do
+      assert {:ok, %{rows: [["test_schema"]]}} =
+        Postgrex.query(pg, "SELECT current_schema()", [])
+
+      assert_raise ArgumentError, ~r/The Rihanna jobs table must be created/, fn ->
+        Rihanna.Migration.check_table!(pg)
+      end
+    end
+
+    test "check_upgrade_not_required! checks jobs table in current schema", %{pg: pg} do
+      create_structure(pg)
+      upgrade_database_schema(%{pg: pg})
+
+      assert :ok == Rihanna.Migration.check_upgrade_not_required!(pg)
+    end
+  end
+
   def insert_historical_job(%{pg: pg}) do
     term = {Rihanna.Mocks.MFAMock, :fun, [self(), "historical-job"]}
 
@@ -68,13 +97,26 @@ defmodule Rihanna.UpgradeTest do
   # Create database schema from v0.6.1 to allow testing upgrade to latest
   defp create_initial_database_schema(_ctx) do
     {:ok, pg} = Postgrex.start_link(Application.fetch_env!(:rihanna, :postgrex))
+    create_structure(pg)
+    {:ok, %{pg: pg}}
+  end
 
+  defp create_structure(pg) do
     table_name = "rihanna_jobs"
-
     for statement <- drop_statements(table_name), do: Postgrex.query!(pg, statement, [])
     for statement <- initial_statements(table_name), do: Postgrex.query!(pg, statement, [])
+  end
 
+  defp create_alternate_database_schema(_ctx) do
+    {:ok, pg} = Postgrex.start_link(Application.fetch_env!(:rihanna, :postgrex))
+    Postgrex.query!(pg, "CREATE SCHEMA test_schema", [])
+    Postgrex.query!(pg, "SET search_path TO test_schema", [])
     {:ok, %{pg: pg}}
+  end
+
+  defp drop_alternate_database_schema do
+    {:ok, pg} = Postgrex.start_link(Application.fetch_env!(:rihanna, :postgrex))
+    Postgrex.query!(pg, "DROP SCHEMA IF EXISTS test_schema CASCADE", [])
   end
 
   defp upgrade_database_schema(%{pg: pg}) do

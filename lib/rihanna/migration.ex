@@ -178,6 +178,7 @@ defmodule Rihanna.Migration do
              SELECT 1
              FROM information_schema.tables
              WHERE table_name = $1
+             AND table_schema = current_schema()
            );
            """,
            [Rihanna.Job.table()]
@@ -221,7 +222,9 @@ defmodule Rihanna.Migration do
            """
            SELECT column_name
            FROM information_schema.columns
-           WHERE table_name = $1 and column_name = ANY($2);
+           WHERE table_name = $1
+           AND column_name = ANY($2)
+           AND table_schema = current_schema();
            """,
            # Migration adds due_at, test if this is present
            [table_name, required_upgrade_columns]
@@ -275,6 +278,7 @@ defmodule Rihanna.Migration do
            FROM pg_indexes
            WHERE tablename = $1
            AND indexname = $2
+           AND schemaname = current_schema()
            """,
            [table_name, "#{table_name}_locking_index"]
          ) do
