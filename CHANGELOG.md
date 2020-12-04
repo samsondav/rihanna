@@ -1,9 +1,13 @@
 # Changelog
 
+## v2.2.1
+
+- Fix for db checks with multi-schema databases - @rubysolo
+
 ## v2.2.0
 
 - DB Upgrade required: Recreate index to add NULLS FIRST on the due_at column on
-  jobs table to fix performance of the locking query
+  jobs table to fix performance of the locking query - @tpitale
 
 ## v2.1.1
 
