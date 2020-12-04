@@ -1,6 +1,6 @@
 # Changelog
 
-## v2.2.1
+## v2.2.2
 
 - Fix for db checks with multi-schema databases - @rubysolo
 
