@@ -201,7 +201,7 @@ defmodule Rihanna.JobTest do
     end
 
     test "deletes job if exists", %{pg: pg, job: job} do
-      assert {:ok, 1} = mark_successful(pg, job.id)
+      assert {:ok, 1} = mark_successful(pg, job)
 
       assert get_job_by_id(pg, job.id) |> is_nil
     end
@@ -221,7 +221,7 @@ defmodule Rihanna.JobTest do
           [job.id]
         )
 
-      assert {:ok, 1} = mark_successful(pg, job.id)
+      assert {:ok, 1} = mark_successful(pg, job)
 
       assert %{num_rows: 0} =
                Postgrex.query!(
@@ -248,7 +248,7 @@ defmodule Rihanna.JobTest do
           [job.id]
         )
 
-      assert {:ok, 0} = mark_successful(pg, job.id)
+      assert {:ok, 0} = mark_successful(pg, job)
     end
   end
 
@@ -262,7 +262,7 @@ defmodule Rihanna.JobTest do
       now = DateTime.utc_now()
       reason = "It went kaboom!"
 
-      mark_failed(pg, job.id, now, reason)
+      mark_failed(pg, job, now, reason)
 
       updated_job = get_job_by_id(pg, job.id)
 
@@ -280,7 +280,7 @@ defmodule Rihanna.JobTest do
 
       due_at = DateTime.utc_now()
 
-      mark_retried(pg, job.id, due_at)
+      mark_retried(pg, job, due_at)
 
       updated_job = get_job_by_id(pg, job.id)
 
@@ -299,7 +299,7 @@ defmodule Rihanna.JobTest do
 
       due_at = due_in(30_000)
 
-      mark_reenqueued(pg, job.id, due_at)
+      mark_reenqueued(pg, job, due_at)
 
       updated_job = get_job_by_id(pg, job.id)
 

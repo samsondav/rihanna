@@ -418,18 +418,23 @@ defmodule Rihanna.Job do
       LIMIT $2
     """
 
-    %{rows: rows, num_rows: num_rows} =
+    %{rows: rows, num_rows: _num_rows} =
       Postgrex.query!(pg, lock_jobs, [classid(), n, exclude_ids])
 
-    if num_rows > 0 do
-      :telemetry.execute([:rihanna, :job, :locked], %{}, %{count: num_rows})
-    end
+    rows
+    |> Rihanna.Job.from_sql()
+    |> Enum.map(&track_job_locked/1)
+  end
 
-    Rihanna.Job.from_sql(rows)
+  defp track_job_locked(job) do
+    :telemetry.execute([:rihanna, :job, :locked], %{}, %{count: 1})
+
+    # return job for mapping
+    job
   end
 
   @doc false
-  def mark_successful(pg, job_id) when is_pid(pg) and is_integer(job_id) do
+  def mark_successful(pg, %{id: job_id} = job) when is_pid(pg) and is_integer(job_id) do
     :telemetry.execute([:rihanna, :job, :succeeded], %{}, %{job_id: job_id, count: 1})
 
     %{num_rows: num_rows} =
@@ -448,7 +453,8 @@ defmodule Rihanna.Job do
   end
 
   @doc false
-  def mark_failed(pg, job_id, now, fail_reason) when is_pid(pg) and is_integer(job_id) do
+  def mark_failed(pg, %{id: job_id} = job, now, fail_reason)
+      when is_pid(pg) and is_integer(job_id) do
     :telemetry.execute([:rihanna, :job, :failed], %{}, %{job_id: job_id, count: 1})
 
     %{num_rows: num_rows} =
@@ -470,7 +476,7 @@ defmodule Rihanna.Job do
     {:ok, num_rows}
   end
 
-  def mark_reenqueued(pg, job_id, due_at) when is_pid(pg) and is_integer(job_id) do
+  def mark_reenqueued(pg, %{id: job_id} = job, due_at) when is_pid(pg) and is_integer(job_id) do
     :telemetry.execute([:rihanna, :job, :reenqueued], %{}, %{job_id: job_id, count: 1})
 
     %{num_rows: num_rows} =
@@ -494,7 +500,7 @@ defmodule Rihanna.Job do
   @doc """
   Update attempts and set due_at datetime
   """
-  def mark_retried(pg, job_id, due_at) when is_pid(pg) and is_integer(job_id) do
+  def mark_retried(pg, %{id: job_id} = job, due_at) when is_pid(pg) and is_integer(job_id) do
     :telemetry.execute([:rihanna, :job, :retried], %{}, %{job_id: job_id, count: 1})
 
     %{num_rows: num_rows} =
