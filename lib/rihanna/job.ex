@@ -151,9 +151,10 @@ defmodule Rihanna.Job do
       )
 
     case result do
-      {:ok, %Postgrex.Result{rows: [job]}} ->
-        :telemetry.execute([:rihanna, :job, :enqueued], %{}, %{job_id: job |> hd, count: 1})
-        {:ok, from_sql(job)}
+      {:ok, %Postgrex.Result{rows: [row]}} ->
+        job = from_sql(row)
+        :telemetry.execute([:rihanna, :job, :enqueued], %{}, telemetry_metadata(job))
+        {:ok, job}
 
       {:error, %Postgrex.Error{postgres: %{pg_code: "42P01"}}} ->
         # Undefined table error (e.g. `rihanna_jobs` table missing), warn user
@@ -324,9 +325,10 @@ defmodule Rihanna.Job do
       )
 
     case result do
-      {:ok, %Postgrex.Result{rows: [job]}} ->
-        :telemetry.execute([:rihanna, :job, :deleted], %{}, %{job_id: job_id, count: 1})
-        {:ok, from_sql(job)}
+      {:ok, %Postgrex.Result{rows: [row]}} ->
+        job = from_sql(row)
+        :telemetry.execute([:rihanna, :job, :deleted], %{}, telemetry_metadata(job))
+        {:ok, job}
 
       {:ok, %Postgrex.Result{num_rows: 0}} ->
         {:error, :job_not_found}
@@ -418,19 +420,24 @@ defmodule Rihanna.Job do
       LIMIT $2
     """
 
-    %{rows: rows, num_rows: num_rows} =
+    %{rows: rows, num_rows: _num_rows} =
       Postgrex.query!(pg, lock_jobs, [classid(), n, exclude_ids])
 
-    if num_rows > 0 do
-      :telemetry.execute([:rihanna, :job, :locked], %{}, %{count: num_rows})
-    end
+    rows
+    |> Rihanna.Job.from_sql()
+    |> Enum.map(&track_job_locked/1)
+  end
 
-    Rihanna.Job.from_sql(rows)
+  defp track_job_locked(job) do
+    :telemetry.execute([:rihanna, :job, :locked], %{}, telemetry_metadata(job))
+
+    # return job for mapping
+    job
   end
 
   @doc false
-  def mark_successful(pg, job_id) when is_pid(pg) and is_integer(job_id) do
-    :telemetry.execute([:rihanna, :job, :succeeded], %{}, %{job_id: job_id, count: 1})
+  def mark_successful(pg, %{id: job_id} = job) when is_pid(pg) and is_integer(job_id) do
+    :telemetry.execute([:rihanna, :job, :succeeded], %{}, telemetry_metadata(job))
 
     %{num_rows: num_rows} =
       Postgrex.query!(
@@ -442,14 +449,15 @@ defmodule Rihanna.Job do
         [job_id]
       )
 
-    release_lock(pg, job_id)
+    release_lock(pg, job)
 
     {:ok, num_rows}
   end
 
   @doc false
-  def mark_failed(pg, job_id, now, fail_reason) when is_pid(pg) and is_integer(job_id) do
-    :telemetry.execute([:rihanna, :job, :failed], %{}, %{job_id: job_id, count: 1})
+  def mark_failed(pg, %{id: job_id} = job, now, fail_reason)
+      when is_pid(pg) and is_integer(job_id) do
+    :telemetry.execute([:rihanna, :job, :failed], %{}, telemetry_metadata(job))
 
     %{num_rows: num_rows} =
       Postgrex.query!(
@@ -465,13 +473,13 @@ defmodule Rihanna.Job do
         [now, fail_reason, job_id]
       )
 
-    release_lock(pg, job_id)
+    release_lock(pg, job)
 
     {:ok, num_rows}
   end
 
-  def mark_reenqueued(pg, job_id, due_at) when is_pid(pg) and is_integer(job_id) do
-    :telemetry.execute([:rihanna, :job, :reenqueued], %{}, %{job_id: job_id, count: 1})
+  def mark_reenqueued(pg, %{id: job_id} = job, due_at) when is_pid(pg) and is_integer(job_id) do
+    :telemetry.execute([:rihanna, :job, :reenqueued], %{}, telemetry_metadata(job))
 
     %{num_rows: num_rows} =
       Postgrex.query!(
@@ -486,7 +494,7 @@ defmodule Rihanna.Job do
         [due_at, job_id]
       )
 
-    release_lock(pg, job_id)
+    release_lock(pg, job)
 
     {:ok, num_rows}
   end
@@ -494,8 +502,8 @@ defmodule Rihanna.Job do
   @doc """
   Update attempts and set due_at datetime
   """
-  def mark_retried(pg, job_id, due_at) when is_pid(pg) and is_integer(job_id) do
-    :telemetry.execute([:rihanna, :job, :retried], %{}, %{job_id: job_id, count: 1})
+  def mark_retried(pg, %{id: job_id} = job, due_at) when is_pid(pg) and is_integer(job_id) do
+    :telemetry.execute([:rihanna, :job, :retried], %{}, telemetry_metadata(job))
 
     %{num_rows: num_rows} =
       Postgrex.query!(
@@ -513,7 +521,7 @@ defmodule Rihanna.Job do
         [due_at, job_id]
       )
 
-    release_lock(pg, job_id)
+    release_lock(pg, job)
 
     {:ok, num_rows}
   end
@@ -531,8 +539,8 @@ defmodule Rihanna.Job do
     Rihanna.Config.pg_advisory_lock_class_id()
   end
 
-  defp release_lock(pg, job_id) when is_pid(pg) and is_integer(job_id) do
-    :telemetry.execute([:rihanna, :job, :released], %{}, %{job_id: job_id, count: 1})
+  defp release_lock(pg, %{id: job_id} = job) when is_pid(pg) and is_integer(job_id) do
+    :telemetry.execute([:rihanna, :job, :released], %{}, telemetry_metadata(job))
 
     %{rows: [[true]]} =
       Postgrex.query!(
@@ -643,5 +651,15 @@ defmodule Rihanna.Job do
   defp adapter(opts) do
     opts[:producer_postgres_connection] ||
       Rihanna.Config.producer_postgres_connection()
+  end
+
+  # Behaviour term
+  defp telemetry_metadata(%{id: id, term: {mod, _args}}) do
+    %{job_id: id, job_module: mod, count: 1}
+  end
+
+  # MFA tuple term
+  defp telemetry_metadata(%{id: id, term: {mod, _f, _a}}) do
+    %{job_id: id, job_module: mod, count: 1}
   end
 end
