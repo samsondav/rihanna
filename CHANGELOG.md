@@ -1,5 +1,9 @@
 # Changelog
 
+## v2.3.0
+
+- Add job_module to telemetry events - @tpitale
+
 ## v2.2.2
 
 - Fix for db checks with multi-schema databases - @rubysolo
