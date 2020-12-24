@@ -439,19 +439,16 @@ defmodule Rihanna.Job do
   def mark_successful(pg, %{id: job_id} = job) when is_pid(pg) and is_integer(job_id) do
     :telemetry.execute([:rihanna, :job, :succeeded], %{}, telemetry_metadata(job))
 
-    %{num_rows: num_rows} =
-      Postgrex.query!(
-        pg,
-        """
-          DELETE FROM "#{table()}"
-          WHERE id = $1;
-        """,
-        [job_id]
-      )
-
-    release_lock(pg, job)
-
-    {:ok, num_rows}
+    try do
+      job_id
+      |> delete()
+      |> case do
+        {:ok, _job} -> {:ok, 1}
+        {:error, _message} -> {:ok, 0}
+      end
+    after
+      release_lock(pg, job)
+    end
   end
 
   @doc false
@@ -638,7 +635,7 @@ defmodule Rihanna.Job do
     |> producer_do_query(query, args)
   end
 
-  if Code.ensure_compiled?(Ecto) do
+  if Code.ensure_compiled(Ecto) do
     defp producer_do_query({Ecto, repo}, query, args) do
       Ecto.Adapters.SQL.query(repo, query, args)
     end
