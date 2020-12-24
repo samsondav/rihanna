@@ -1,5 +1,9 @@
 # Changelog
 
+## v2.3.1
+
+- Reuse Job.delete in Job.mark_successful - @tpitale
+
 ## v2.3.0
 
 - Add job_module to telemetry events - @tpitale
