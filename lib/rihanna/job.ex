@@ -443,8 +443,8 @@ defmodule Rihanna.Job do
       job_id
       |> delete()
       |> case do
-        # let it raise on {:error, message}
         {:ok, _job} -> {:ok, 1}
+        {:error, _message} -> {:ok, 0}
       end
     after
       release_lock(pg, job)
@@ -635,7 +635,7 @@ defmodule Rihanna.Job do
     |> producer_do_query(query, args)
   end
 
-  if Code.ensure_compiled?(Ecto) do
+  if Code.ensure_compiled(Ecto) do
     defp producer_do_query({Ecto, repo}, query, args) do
       Ecto.Adapters.SQL.query(repo, query, args)
     end
