@@ -185,16 +185,15 @@ defmodule Rihanna do
   Note that this only works if the job has failed - if it has not yet run or is
   currently in progress, this function will do nothing.
   """
+  @spec retry(String.t() | integer(), keyword()) :: {:ok, :retried} | {:error, :job_not_found}
   def retry(job_id, opts \\ [])
 
-  @spec retry(String.t(), keyword()) :: {:ok, :retried} | {:error, :job_not_found}
   def retry(job_id, opts) when is_binary(job_id) do
     job_id
     |> String.to_integer()
     |> retry(opts)
   end
 
-  @spec retry(integer(), keyword()) :: {:ok, :retried} | {:error, :job_not_found}
   def retry(job_id, opts) when is_integer(job_id) and job_id > 0 do
     Rihanna.Job.retry_failed(job_id, opts)
   end
