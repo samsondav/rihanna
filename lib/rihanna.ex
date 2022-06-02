@@ -200,12 +200,11 @@ defmodule Rihanna do
 
   @doc """
   Deletes a job by ID. ID can be passed as either integer or string.
-
   """
-  def delete(job_id, opts \\ [])
-
   @spec delete(String.t() | integer(), keyword()) ::
           {:ok, Rihanna.Job.t()} | {:error, :job_not_found}
+  def delete(job_id, opts \\ [])
+
   def delete(job_id, opts) when is_binary(job_id) do
     job_id
     |> String.to_integer()
