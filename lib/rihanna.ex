@@ -51,62 +51,65 @@ defmodule Rihanna do
   > Rihanna.enqueue(MyJob, arg)
   """
 
-  def enqueue(term, opts \\ [])
-
   @doc """
+  This function accepts a few different argument shapes.
+
+  ## First arg of the shape {module(), atom(), list()}, optional second arg of a keyword list
   Enqueues a job specified as a simple mod-fun-args tuple.
 
-  ## Example
+  ### Example
 
-      > Rihanna.enqueue({IO, :puts, ["Umbrella-ella-ella"]})
+  ```
+  Rihanna.enqueue({IO, :puts, ["Umbrella-ella-ella"]})
+  ```
+
+  ## First arg of the shape {module(), any()}, optional second arg of a keyword list
+  Enqueues a job specified as a module and one argument.
+
+  It is expected that the module implements the `Rihanna.Job` behaviour and
+  defines a function `c:Rihanna.Job.perform/1`.
+
+  The argument may be anything.
+
+  See `Rihanna.Job` for more on how to implement your own jobs.
+
+  You can enqueue a job like so:
+
+  ### Example (enqueue job for later execution and return immediately):
+  ```
+  Rihanna.enqueue({MyApp.MyJob, [arg1, arg2]}, opts)
+  ```
+
+  ## First arg of a module, any second arg
+  Enqueues a job specified as a module and one argument.
+
+  It is expected that the module implements the `Rihanna.Job` behaviour and
+  defines a function `c:Rihanna.Job.perform/1`.
+
+  The argument may be anything.
+
+  See `Rihanna.Job` for more on how to implement your own jobs.
+
+  You can enqueue a job like so:
+
+  ### Example (enqueue job for later execution and return immediately):
+  ```
+  Rihanna.enqueue(MyApp.MyJob, [arg1, arg2])
+  ```
   """
-  @spec enqueue({module(), atom(), list()}, keyword()) :: {:ok, Rihanna.Job.t()}
+  @spec enqueue({module(), atom(), list()} | {module(), any()} | module(), any()) ::
+          {:ok, Rihanna.Job.t()}
+  def enqueue(term, opts \\ [])
+
   def enqueue(term = {mod, fun, args}, opts)
       when is_atom(mod) and is_atom(fun) and is_list(args) do
     Rihanna.Job.enqueue(term, opts)
   end
 
-
-  @doc """
-  Enqueues a job specified as a module and one argument.
-
-  It is expected that the module implements the `Rihanna.Job` behaviour and
-  defines a function `c:Rihanna.Job.perform/1`.
-
-  The argument may be anything.
-
-  See `Rihanna.Job` for more on how to implement your own jobs.
-
-  You can enqueue a job like so:
-
-  ```
-  # Enqueue job for later execution and return immediately
-  Rihanna.enqueue({MyApp.MyJob, [arg1, arg2]}, opts)
-  ```
-  """
-  @spec enqueue({module(), any()}, keyword()) :: {:ok, Rihanna.Job.t()}
   def enqueue(term = {mod, _arg}, opts) when is_atom(mod) do
     Rihanna.Job.enqueue(term, opts)
   end
-  @doc """
-  Enqueues a job specified as a module and one argument.
 
-  It is expected that the module implements the `Rihanna.Job` behaviour and
-  defines a function `c:Rihanna.Job.perform/1`.
-
-  The argument may be anything.
-
-  See `Rihanna.Job` for more on how to implement your own jobs.
-
-  You can enqueue a job like so:
-
-  ```
-  # Enqueue job for later execution and return immediately
-  Rihanna.enqueue(MyApp.MyJob, [arg1, arg2])
-  ```
-  """
-
-  @spec enqueue(module(), any()) :: {:ok, Rihanna.Job.t()}
   def enqueue(mod, arg) when is_atom(mod) do
     Rihanna.Job.enqueue({mod, arg})
   end
@@ -182,27 +185,26 @@ defmodule Rihanna do
   Note that this only works if the job has failed - if it has not yet run or is
   currently in progress, this function will do nothing.
   """
+  @spec retry(String.t() | integer(), keyword()) :: {:ok, :retried} | {:error, :job_not_found}
   def retry(job_id, opts \\ [])
 
-  @spec retry(String.t(), keyword()) :: {:ok, :retried} | {:error, :job_not_found}
   def retry(job_id, opts) when is_binary(job_id) do
     job_id
     |> String.to_integer()
     |> retry(opts)
   end
 
-  @spec retry(integer(), keyword()) :: {:ok, :retried} | {:error, :job_not_found}
   def retry(job_id, opts) when is_integer(job_id) and job_id > 0 do
     Rihanna.Job.retry_failed(job_id, opts)
   end
 
   @doc """
   Deletes a job by ID. ID can be passed as either integer or string.
-
   """
+  @spec delete(String.t() | integer(), keyword()) ::
+          {:ok, Rihanna.Job.t()} | {:error, :job_not_found}
   def delete(job_id, opts \\ [])
 
-  @spec delete(String.t() | integer(), keyword()) :: {:ok, Rihanna.Job.t()} | {:error, :job_not_found}
   def delete(job_id, opts) when is_binary(job_id) do
     job_id
     |> String.to_integer()
